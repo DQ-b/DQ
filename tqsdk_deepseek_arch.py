@@ -83,6 +83,7 @@ class MarketFeatures:
     ma60: float = 0.0            # 60 根 K 线均价
     price_vs_ma5: float = 0.0    # 价格相对 MA5 的偏离度
     price_vs_ma20: float = 0.0   # 价格相对 MA20 的偏离度
+    momentum_20: float = 0.0     # 过去 20 根 K 线的价格变化率
     trend: str = "震荡"           # 趋势判断
 
     def to_prompt(self) -> str:
@@ -94,37 +95,41 @@ class MarketFeatures:
             book = "盘口基本均衡"
         oi_desc = "增仓" if self.oi_change > 0 else "减仓" if self.oi_change < 0 else "持仓不变"
 
-        # 偏离分级
-        dev = self.price_vs_ma5
-        if dev > 0.02:
-            dev_warn = f"⚠️ 价格大幅高于MA5({dev:+.2%})，回归风险高，追多需谨慎"
-        elif dev > 0.01:
-            dev_warn = f"价格偏高于MA5({dev:+.2%})，均值回归压力存在"
-        elif dev < -0.02:
-            dev_warn = f"⚠️ 价格大幅低于MA5({dev:+.2%})，反弹概率上升，追空需谨慎"
-        elif dev < -0.01:
-            dev_warn = f"价格偏低于MA5({dev:+.2%})，均值回归支撑存在"
+        # MA20 偏离分级 (MA20 滞后更多，偏离更有意义)
+        dev20 = self.price_vs_ma20
+        if dev20 > 0.005:
+            dev20_warn = f"价格高于MA20 {dev20:+.2%}，上行动能存在"
+        elif dev20 < -0.005:
+            dev20_warn = f"价格低于MA20 {dev20:+.2%}，下行动能存在"
         else:
-            dev_warn = f"价格贴近MA5({dev:+.2%})，偏离不明显"
+            dev20_warn = f"价格贴近MA20({dev20:+.2%})，方向不明"
+
+        # 动量信号 (过去20根K线涨跌幅，最直接的趋势信号)
+        mom = self.momentum_20
+        if mom > 0.003:
+            mom_signal = f"↑ 20分钟上涨{mom:+.2%}，短线多头动量"
+        elif mom < -0.003:
+            mom_signal = f"↓ 20分钟下跌{mom:+.2%}，短线空头动量"
+        else:
+            mom_signal = f"→ 20分钟变化{mom:+.2%}，方向不明"
 
         # 成交量信号
         if self.volume_burst >= 2.0:
-            vol_signal = f"🔥 成交量爆发({self.volume_burst:.1f}x)，突破有效性高"
-        elif self.volume_burst >= 1.5:
-            vol_signal = f"成交量放大({self.volume_burst:.1f}x)，可顺势参与"
-        elif self.volume_burst >= 0.8:
-            vol_signal = f"成交量正常({self.volume_burst:.1f}x)，信号一般"
+            vol_signal = f"成交量爆发({self.volume_burst:.1f}x)，信号强"
+        elif self.volume_burst >= 1.2:
+            vol_signal = f"成交量放大({self.volume_burst:.1f}x)，信号有效"
         else:
-            vol_signal = f"⚠️ 成交量萎缩({self.volume_burst:.1f}x)，不宜追势"
+            vol_signal = f"成交量正常({self.volume_burst:.1f}x)"
 
         return (
             f"合约 {self.symbol} | 最新价 {self.last_price:.1f}\n"
-            f"趋势: {self.trend} | MA5={self.ma5:.1f} MA20={self.ma20:.1f} MA60={self.ma60:.1f}\n"
-            f"偏离: {dev_warn}\n"
-            f"距MA20={self.price_vs_ma20:+.2%} | 波幅={self.price_range_pct:.2%} | 波动率={self.realized_vol:.2%}\n"
-            f"盘口: {self.orderbook_imbalance:+.2f} ({book}) | {oi_desc} {abs(self.oi_change):.0f}手\n"
+            f"趋势: {self.trend} | MA20={self.ma20:.1f} MA60={self.ma60:.1f}\n"
+            f"MA20偏离: {dev20_warn}\n"
+            f"动量信号: {mom_signal}\n"
+            f"波幅={self.price_range_pct:.2%} 波动率={self.realized_vol:.2%}\n"
+            f"盘口: {self.orderbook_imbalance:+.2f} ({book}) | {oi_desc}\n"
             f"成交量: {vol_signal}\n"
-            f"请结合均值回归原则和成交量确认给出决策。"
+            f"注意: 动量≠0或MA20有偏离时必须给出方向，禁止无故hold。"
         )
 
 
@@ -188,6 +193,9 @@ class FeatureEngine:
         price = float(q.last_price)
         price_vs_ma5  = (price - ma5)  / ma5  if ma5  else 0.0
         price_vs_ma20 = (price - ma20) / ma20 if ma20 else 0.0
+        # 动量: 过去 20 根 K 线的价格变化率
+        momentum_20 = float((all_closes[-1] - all_closes[-21]) / all_closes[-21]) \
+            if len(all_closes) >= 21 and all_closes[-21] > 0 else 0.0
 
         # 趋势判断: 均线多头/空头排列
         if ma5 > ma20 > ma60 and price > ma5:
@@ -213,6 +221,7 @@ class FeatureEngine:
             ma5=ma5, ma20=ma20, ma60=ma60,
             price_vs_ma5=price_vs_ma5,
             price_vs_ma20=price_vs_ma20,
+            momentum_20=momentum_20,
             trend=trend,
         )
 
@@ -222,16 +231,16 @@ class FeatureEngine:
 # =============================================================================
 class DecisionBrain:
     SYSTEM_PROMPT = (
-        "你是燃油期货短线交易决策引擎，必须给出明确的交易建议，禁止无故持仓观望。\n\n"
-        "【强制规则】每次决策必须从 long/short/hold 中选一，且:\n"
-        "- 只要价格偏离MA5超过±0.2%，必须给出 long 或 short 方向\n"
-        "- 趋势为「多头趋势」或「短期偏多」时，优先考虑 long\n"
-        "- 趋势为「空头趋势」或「短期偏空」时，优先考虑 short\n"
-        "- hold 只允许在「震荡趋势」且偏离MA5<±0.1% 时使用\n\n"
-        "【仓位规则】\n"
-        "- 偏离MA5超±1% 或 volume_burst≥1.5: size_pct=25~35, confidence≥0.7\n"
-        "- 偏离MA5超±0.2% 或趋势明确: size_pct=15~20, confidence=0.5~0.65\n"
-        "- 其余情况必须选 long/short 轻仓: size_pct=10, confidence=0.5\n\n"
+        "你是燃油期货短线交易决策引擎。根据动量和均线偏离给出明确方向。\n\n"
+        "【主信号: 20分钟动量】\n"
+        "- 动量 > +0.3%: 做多(long), size_pct=20, confidence=0.65\n"
+        "- 动量 < -0.3%: 做空(short), size_pct=20, confidence=0.65\n"
+        "- 动量 > +0.6% 且趋势偏多: size_pct=30, confidence=0.75\n"
+        "- 动量 < -0.6% 且趋势偏空: size_pct=30, confidence=0.75\n\n"
+        "【辅助信号: MA20偏离】\n"
+        "- 价格高于MA20超0.5%: 倾向 long\n"
+        "- 价格低于MA20超0.5%: 倾向 short\n\n"
+        "【hold条件】仅当动量在±0.1%以内 且 MA20偏离<±0.3% 时才允许hold\n\n"
         "只输出JSON，不要任何解释或markdown:\n"
         '{"action":"long|short|hold","size_pct":0-100,'
         '"confidence":0-1,"reason":"简短中文依据"}'
