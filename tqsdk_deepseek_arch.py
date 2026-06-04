@@ -594,9 +594,11 @@ if __name__ == "__main__":
             "请先设置环境变量 TQ_USER / TQ_PASS / DEEPSEEK_KEY 再运行。"
         )
 
-    LIVE = False  # 先用回测/模拟跑通, 千万别一上来就实盘
+    # True = 实时模拟盘 (TqSim, 真实行情流, 无历史快进)
+    # False = 历史回测 (TqBacktest)
+    LIVE = True
 
-    # 激进燃油风控参数 (来自 fu2609_config.FuelRiskConfig)
+    # 燃油风控参数
     _fuel_cfg = RiskConfig(
         max_risk_ratio=0.60,
         max_position_pct=0.45,
@@ -605,28 +607,37 @@ if __name__ == "__main__":
     )
 
     if LIVE:
-        api = TqApi(TqSim(), auth=TqAuth(TQ_USER, TQ_PASS))
+        print("[启动] 模拟盘模式 — 连接快期服务器获取实时行情...")
+        api = TqApi(TqSim(init_balance=200000), auth=TqAuth(TQ_USER, TQ_PASS))
+        print(f"[启动] 连接成功，订阅 {SYMBOL}，每 30 秒决策一次")
+        print("[启动] 按 Ctrl+C 终止，程序会打印最终账户状态")
         brain = DecisionBrain(DEEPSEEK_KEY)
         guard = RiskGuardrails(api, SYMBOL, _fuel_cfg)
-        TradingOrchestrator(api, SYMBOL, brain, guard).run()
+        orchestrator = TradingOrchestrator(api, SYMBOL, brain, guard,
+                                           decision_interval=30.0)
+        try:
+            orchestrator.run()
+        except KeyboardInterrupt:
+            acc = api.get_account()
+            pos = api.get_position(SYMBOL)
+            print(f"\n[停止] 权益={acc.balance:.0f} 浮盈={acc.float_profit:.0f} "
+                  f"持仓净={int(pos.pos_long - pos.pos_short)}手")
+        finally:
+            api.close()
     else:
         print("[启动] 正在连接快期服务器并初始化回测...")
         api = TqApi(
             TqSim(init_balance=200000),
-            # 1 个交易日: 给 DeepSeek 足够时间回应每个决策 (回测会快进, LLM 调用是真实网络)
-            # 拉宽到一周，确保覆盖有趋势的交易日
             backtest=TqBacktest(start_dt=date(2026, 4, 7), end_dt=date(2026, 4, 11)),
             auth=TqAuth(TQ_USER, TQ_PASS),
         )
         print("[启动] 连接成功，开始加载 K 线数据...")
         brain = DecisionBrain(DEEPSEEK_KEY)
-        # sample_interval=30: 每 30 根 1 分钟 K 线决策一次, 1 个交易日约 15 次决策
-        # 一周数据，每 60 根 K 线决策一次，约 20 次决策，5-10 分钟跑完
         bt = ReasoningBacktester(api, SYMBOL, brain, sample_interval=30)
         print("[启动] 开始同步回测，每 30 根 K 线调用一次 DeepSeek...")
         try:
-            bt.run_sync()   # 同步主循环，阻塞等待每次 DeepSeek 响应
-        except Exception:   # TqSdk 回测结束抛 BacktestFinished
+            bt.run_sync()
+        except Exception:
             bt.finalize_forward_returns()
             print("\n===== 回测结果 =====")
             print(bt.metrics())
