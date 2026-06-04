@@ -482,7 +482,7 @@ class ReasoningBacktester:
             feats = self.engine.latest
             if feats is None:
                 continue
-            print(f"[Bar #{self._bar_count}] 调用 DeepSeek 决策...")
+            print(f"[Bar #{self._bar_count}] 动量={feats.momentum_20:+.3%} MA20偏离={feats.price_vs_ma20:+.3%} 趋势={feats.trend} 调用 DeepSeek...")
             decision = self.brain.decide_sync(feats.to_prompt())
             if decision is None:
                 continue
