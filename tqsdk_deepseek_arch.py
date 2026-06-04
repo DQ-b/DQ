@@ -491,12 +491,17 @@ class ReasoningBacktester:
                           f"理由={decision.reason[:40]}")
 
     def finalize_forward_returns(self):
-        """回测跑完后, 用整段历史 K 线回填每条决策的前瞻收益。"""
+        """回测跑完后，按决策价格在历史 K 线里找最近匹配点，向后取 horizon 根的前瞻收益。"""
         closes = self.engine.klines.close.values
-        # 简化示意: 实战应保存完整历史序列并按 ts 对齐索引
+        if len(closes) == 0:
+            return
         for r in self.records:
-            # TODO: 用决策点索引 + horizon 取未来价格, 计算 forward_return / realized_pnl
-            pass
+            # 找决策价格在 K 线序列里最近的下标
+            idx = int(np.argmin(np.abs(closes - r.price_at_decision)))
+            future_idx = min(idx + self.horizon, len(closes) - 1)
+            if closes[idx] > 0:
+                r.price_after_horizon = float(closes[future_idx])
+                r.forward_return = float(closes[future_idx] / closes[idx] - 1)
 
     def metrics(self) -> dict:
         """三大核心指标。"""
