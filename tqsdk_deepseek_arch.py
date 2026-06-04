@@ -395,6 +395,9 @@ class ReasoningBacktester:
                         action=decision.action, confidence=decision.confidence,
                         price_at_decision=float(closes[-1]), past_return=past,
                     ))
+                    print(f"[决策#{len(self.records):03d}] {decision.action.value} "
+                          f"conf={decision.confidence:.2f} 价格={float(closes[-1]):.1f} "
+                          f"理由={decision.reason[:40]}")
 
     def finalize_forward_returns(self):
         """回测跑完后, 用整段历史 K 线回填每条决策的前瞻收益。"""
@@ -469,11 +472,13 @@ if __name__ == "__main__":
     else:
         api = TqApi(
             TqSim(init_balance=200000),
-            backtest=TqBacktest(start_dt=date(2026, 5, 1), end_dt=date(2026, 5, 31)),
+            # 1 个交易日: 给 DeepSeek 足够时间回应每个决策 (回测会快进, LLM 调用是真实网络)
+            backtest=TqBacktest(start_dt=date(2026, 5, 11), end_dt=date(2026, 5, 12)),
             auth=TqAuth(TQ_USER, TQ_PASS),
         )
         brain = DecisionBrain(DEEPSEEK_KEY)
-        bt = ReasoningBacktester(api, SYMBOL, brain)
+        # sample_interval=30: 每 30 根 1 分钟 K 线决策一次, 1 个交易日约 15 次决策
+        bt = ReasoningBacktester(api, SYMBOL, brain, sample_interval=30)
         api.create_task(bt._evaluate_loop())
         try:
             while True:
