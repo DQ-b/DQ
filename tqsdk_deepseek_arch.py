@@ -30,6 +30,7 @@ from typing import Optional, List
 
 import aiohttp
 import numpy as np
+import requests as _requests
 
 from tqsdk import TqApi, TqAuth, TqSim, TqBacktest, TargetPosTask
 
@@ -182,15 +183,39 @@ class DecisionBrain:
         self.endpoint = endpoint
         self.timeout = timeout
 
-    async def decide(self, prompt: str) -> Optional[Decision]:
-        """异步调用 DeepSeek。任何异常/超时/解析失败 -> 返回 None (fail-closed)。"""
+    def decide_sync(self, prompt: str) -> Optional[Decision]:
+        """同步调用 DeepSeek（用于回测模式，阻塞等待真实响应）。"""
         payload = {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": self.SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
-            "temperature": 0.2,           # 低温度提升一致性 (见模块三)
+            "temperature": 0.2,
+            "response_format": {"type": "json_object"},
+        }
+        headers = {"Authorization": f"Bearer {self.api_key}",
+                   "Content-Type": "application/json"}
+        try:
+            resp = _requests.post(self.endpoint, json=payload, headers=headers,
+                                  timeout=self.timeout)
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
+            content = content.replace("```json", "").replace("```", "").strip()
+            return Decision.from_llm_json(json.loads(content))
+        except Exception as e:
+            print(f"[Brain] 调用失败, 视为 HOLD: {e}")
+            return None
+
+    async def decide(self, prompt: str) -> Optional[Decision]:
+        """异步调用 DeepSeek（用于实盘模式，不阻塞主循环）。"""
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": self.SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.2,
             "response_format": {"type": "json_object"},
         }
         headers = {"Authorization": f"Bearer {self.api_key}",
@@ -371,7 +396,38 @@ class ReasoningBacktester:
         self.records: List[EvalRecord] = []
         self._bar_count = 0
 
+    def run_sync(self):
+        """回测专用同步主循环：每隔 sample_interval 根 K 线调一次 DeepSeek（阻塞等待）。
+        回测模式下 wait_update() 推进历史数据，decide_sync() 真实调用 LLM。"""
+        klines = self.engine.klines
+        while True:
+            self.api.wait_update()
+            if not self.api.is_changing(klines.iloc[-1], "datetime"):
+                continue
+            self._bar_count += 1
+            self.engine.update()
+            if self._bar_count % self.sample_interval != 0:
+                continue
+            feats = self.engine.latest
+            if feats is None:
+                continue
+            print(f"[Bar #{self._bar_count}] 调用 DeepSeek 决策...")
+            decision = self.brain.decide_sync(feats.to_prompt())
+            if decision is None:
+                continue
+            closes = klines.close.values
+            past = float(closes[-1] / closes[-self.horizon] - 1) if len(closes) > self.horizon else 0.0
+            self.records.append(EvalRecord(
+                ts=feats.ts, prompt=feats.to_prompt(),
+                action=decision.action, confidence=decision.confidence,
+                price_at_decision=float(closes[-1]), past_return=past,
+            ))
+            print(f"[决策#{len(self.records):03d}] {decision.action.value} "
+                  f"conf={decision.confidence:.2f} 价格={float(closes[-1]):.1f} "
+                  f"理由={decision.reason[:40]}")
+
     async def _evaluate_loop(self):
+        """实盘/异步模式保留（不用于回测）。"""
         klines = self.engine.klines
         while True:
             async with self.api.register_update_notify(klines.iloc[-1]) as chan:
@@ -487,14 +543,13 @@ if __name__ == "__main__":
         print("[启动] 连接成功，开始加载 K 线数据...")
         brain = DecisionBrain(DEEPSEEK_KEY)
         # sample_interval=30: 每 30 根 1 分钟 K 线决策一次, 1 个交易日约 15 次决策
-        _guard = RiskGuardrails(api, SYMBOL, _fuel_cfg)
         bt = ReasoningBacktester(api, SYMBOL, brain, sample_interval=30)
-        api.create_task(bt._evaluate_loop())
+        print("[启动] 开始同步回测，每 30 根 K 线调用一次 DeepSeek...")
         try:
-            while True:
-                api.wait_update()
-        except Exception:  # TqSdk 回测结束抛 BacktestFinished
+            bt.run_sync()   # 同步主循环，阻塞等待每次 DeepSeek 响应
+        except Exception:   # TqSdk 回测结束抛 BacktestFinished
             bt.finalize_forward_returns()
+            print("\n===== 回测结果 =====")
             print(bt.metrics())
         finally:
             api.close()
