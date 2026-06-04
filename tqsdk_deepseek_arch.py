@@ -74,14 +74,18 @@ class MarketFeatures:
     ts: float
     last_price: float
     price_range_pct: float       # 近窗口 K 线 (high-low)/close
-    realized_vol: float          # 已实现波动率 (对数收益标准差 * 年化/周期化系数)
-    orderbook_imbalance: float   # 盘口不平衡度 (bid-ask)/(bid+ask), 范围 [-1,1]
-    oi_change: float             # 持仓量变化 (close_oi 环比)
-    volume_burst: float          # 成交量异动: 最新量 / 窗口均量
+    realized_vol: float          # 已实现波动率
+    orderbook_imbalance: float   # 盘口不平衡度 [-1,1]
+    oi_change: float             # 持仓量变化
+    volume_burst: float          # 成交量异动倍数
+    ma5: float = 0.0             # 5 根 K 线均价
+    ma20: float = 0.0            # 20 根 K 线均价
+    ma60: float = 0.0            # 60 根 K 线均价
+    price_vs_ma5: float = 0.0    # 价格相对 MA5 的偏离度
+    price_vs_ma20: float = 0.0   # 价格相对 MA20 的偏离度
+    trend: str = "震荡"           # 趋势判断
 
     def to_prompt(self) -> str:
-        """模块一核心: 把数值特征翻译成结构化自然语言, 喂给 LLM。
-        格式: [时间] [合约] [价格] [价格区间] [盘口不平衡度] ..."""
         if self.orderbook_imbalance > 0.15:
             book = "买盘明显占优"
         elif self.orderbook_imbalance < -0.15:
@@ -90,13 +94,13 @@ class MarketFeatures:
             book = "盘口基本均衡"
         oi_desc = "增仓" if self.oi_change > 0 else "减仓" if self.oi_change < 0 else "持仓不变"
         return (
-            f"[{datetime.fromtimestamp(self.ts):%H:%M:%S}] 合约 {self.symbol} | "
-            f"最新价 {self.last_price:.1f} | "
-            f"近窗口波幅 {self.price_range_pct:.2%} | "
-            f"已实现波动率 {self.realized_vol:.2%} | "
-            f"盘口不平衡度 {self.orderbook_imbalance:+.2f} ({book}) | "
-            f"{oi_desc} {abs(self.oi_change):.0f} 手 | "
-            f"成交量异动 {self.volume_burst:.1f}x"
+            f"合约 {self.symbol} | 最新价 {self.last_price:.1f}\n"
+            f"趋势: {self.trend} | MA5={self.ma5:.1f} MA20={self.ma20:.1f} MA60={self.ma60:.1f}\n"
+            f"价格偏离: 距MA5={self.price_vs_ma5:+.2%} 距MA20={self.price_vs_ma20:+.2%}\n"
+            f"波幅={self.price_range_pct:.2%} | 波动率={self.realized_vol:.2%}\n"
+            f"盘口: {self.orderbook_imbalance:+.2f} ({book}) | {oi_desc} {abs(self.oi_change):.0f}手\n"
+            f"成交量异动={self.volume_burst:.1f}x\n"
+            f"请根据以上特征给出交易决策。趋势明确时应给出 long/short，不要总是 hold。"
         )
 
 
@@ -152,15 +156,40 @@ class FeatureEngine:
         mean_vol = float(np.mean(vols[:-1])) if len(vols) > 1 else 0.0
         volume_burst = float(vols[-1] / mean_vol) if mean_vol > 0 else 1.0
 
+        # 均线
+        all_closes = self.klines.close.values
+        ma5  = float(np.mean(all_closes[-5:]))  if len(all_closes) >= 5  else float(closes[-1])
+        ma20 = float(np.mean(all_closes[-20:])) if len(all_closes) >= 20 else float(closes[-1])
+        ma60 = float(np.mean(all_closes[-60:])) if len(all_closes) >= 60 else float(closes[-1])
+        price = float(q.last_price)
+        price_vs_ma5  = (price - ma5)  / ma5  if ma5  else 0.0
+        price_vs_ma20 = (price - ma20) / ma20 if ma20 else 0.0
+
+        # 趋势判断: 均线多头/空头排列
+        if ma5 > ma20 > ma60 and price > ma5:
+            trend = "多头趋势"
+        elif ma5 < ma20 < ma60 and price < ma5:
+            trend = "空头趋势"
+        elif ma5 > ma20 and price > ma20:
+            trend = "短期偏多"
+        elif ma5 < ma20 and price < ma20:
+            trend = "短期偏空"
+        else:
+            trend = "震荡"
+
         return MarketFeatures(
             symbol=self.symbol,
             ts=time.time(),
-            last_price=float(q.last_price),
+            last_price=price,
             price_range_pct=price_range_pct,
             realized_vol=realized_vol,
             orderbook_imbalance=float(imbalance),
             oi_change=oi_change,
             volume_burst=volume_burst,
+            ma5=ma5, ma20=ma20, ma60=ma60,
+            price_vs_ma5=price_vs_ma5,
+            price_vs_ma20=price_vs_ma20,
+            trend=trend,
         )
 
 
@@ -169,10 +198,16 @@ class FeatureEngine:
 # =============================================================================
 class DecisionBrain:
     SYSTEM_PROMPT = (
-        "你是期货交易决策引擎。基于给定的实时市场特征, 只输出一个 JSON 对象, "
-        "不要任何解释或 markdown 包裹。字段: "
-        '{"action": "long|short|close|hold", "size_pct": 0-100, '
-        '"confidence": 0-1, "reason": "简短依据"}'
+        "你是期货短线交易决策引擎，专注燃油期货波段交易。"
+        "根据给定的市场特征（趋势、均线、盘口、波动率）给出明确的交易决策。\n"
+        "决策规则:\n"
+        "- 多头趋势/短期偏多 + 买盘占优 + 成交量放大 → 优先考虑 long\n"
+        "- 空头趋势/短期偏空 + 卖盘占优 + 成交量放大 → 优先考虑 short\n"
+        "- 震荡且无明显信号 → hold，但不要总是 hold\n"
+        "- size_pct 表示建议仓位占权益比例(0-100)，有明确信号时给 20-40\n"
+        "只输出一个 JSON 对象，不要任何解释或 markdown。字段:\n"
+        '{"action":"long|short|close|hold","size_pct":0-100,'
+        '"confidence":0-1,"reason":"简短中文依据"}'
     )
 
     def __init__(self, api_key: str, model: str = "deepseek-chat",
@@ -241,7 +276,7 @@ class RiskConfig:
     max_risk_ratio: float = 0.50       # 账户保证金占用率上限 (account.risk_ratio)
     max_position_pct: float = 0.30     # 单合约目标仓位占权益上限
     daily_loss_limit_pct: float = 0.03 # 当日亏损超过初始权益此比例则全天禁开仓
-    min_confidence: float = 0.60       # 低于此置信度的决策直接拒绝
+    min_confidence: float = 0.45       # 低于此置信度的决策直接拒绝
 
 
 @dataclass
@@ -524,7 +559,7 @@ if __name__ == "__main__":
         max_risk_ratio=0.60,
         max_position_pct=0.45,
         daily_loss_limit_pct=0.08,
-        min_confidence=0.65,
+        min_confidence=0.45,
     )
 
     if LIVE:
