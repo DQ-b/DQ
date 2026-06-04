@@ -14,39 +14,58 @@
   单根大K线可能在熔断触发前就造成远超8%的回撤。日内熔断是"事后止损",
   真正的事前保护是 [单笔仓位上限] + [逐笔浮亏硬止损]。
 """
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 import math
 
-from tqsdk import TqApi
-
-from tqsdk_deepseek_arch import RiskConfig, RiskGuardrails
+if TYPE_CHECKING:
+    from tqsdk import TqApi
 
 SYMBOL = "SHFE.fu2609"
 
 
 @dataclass
-class FuelRiskConfig(RiskConfig):
-    # —— 按你的选择调好的参数 (覆盖 RiskConfig 的默认值) ——
+class FuelRiskConfig:
+    """独立配置类，不依赖 tqsdk_deepseek_arch，避免循环导入。"""
+    max_risk_ratio: float = 0.60        # 账户总保证金占用率上限
     max_position_pct: float = 0.45      # 激进: 单笔目标仓位上限 45% 权益
     daily_loss_limit_pct: float = 0.08  # 当日亏损 8% 全天禁开仓
-    max_risk_ratio: float = 0.60        # 账户总保证金占用率上限 (激进仓位下放宽)
-    min_confidence: float = 0.65        # 高仓位 -> 提高置信度门槛, 宁缺毋滥
-
-    # —— 新增: 逐笔浮亏硬止损 (比日内熔断更快的防线) ——
-    per_trade_stop_pct: float = 0.40    # 单笔浮亏达该笔占用保证金的 40% 即强平
-    # 说明: 40%保证金浮亏 ≈ 价格反向约 (0.40 * 18% / 1) ≈ 7% 时触发, 早于15%涨跌停
+    min_confidence: float = 0.65        # 高仓位 -> 提高置信度门槛
+    per_trade_stop_pct: float = 0.40    # 单笔浮亏达保证金 40% 即强平
 
 
-class FuelGuardrails(RiskGuardrails):
-    """在 RiskGuardrails 基础上增加逐笔浮亏硬止损。建议直接用这个版本。"""
+class FuelGuardrails:
+    """燃油专用风控：继承 RiskGuardrails 逻辑 + 逐笔浮亏硬止损。
+    延迟导入 tqsdk_deepseek_arch 避免循环引用。"""
 
-    def __init__(self, api: TqApi, symbol: str = SYMBOL,
+    def __init__(self, api: "TqApi", symbol: str = SYMBOL,
                  config: Optional[FuelRiskConfig] = None):
-        super().__init__(api, symbol, config or FuelRiskConfig())
+        # 延迟导入，此时 tqsdk_deepseek_arch 已完全加载
+        from tqsdk_deepseek_arch import RiskConfig, RiskGuardrails
+
+        self.cfg = config or FuelRiskConfig()
+        # 将 FuelRiskConfig 字段映射到 RiskConfig，复用 validate()
+        base_cfg = RiskConfig(
+            max_risk_ratio=self.cfg.max_risk_ratio,
+            max_position_pct=self.cfg.max_position_pct,
+            daily_loss_limit_pct=self.cfg.daily_loss_limit_pct,
+            min_confidence=self.cfg.min_confidence,
+        )
+        self._inner = RiskGuardrails(api, symbol, base_cfg)
+        self.api = api
+        self.symbol = symbol
+        self.quote = api.get_quote(symbol)
+
+    # 代理 RiskGuardrails 的公共接口
+    def mark_session_start(self):
+        self._inner.mark_session_start()
+
+    def validate(self, decision):
+        return self._inner.validate(decision)
 
     def lots_from_pct(self, size_pct: float) -> int:
-        """size_pct -> 手数。用实时 quote.margin (每手保证金), 不写死。"""
         acc = self.api.get_account()
         margin_per_lot = float(self.quote.margin)
         if margin_per_lot <= 0:
@@ -56,7 +75,7 @@ class FuelGuardrails(RiskGuardrails):
 
     def check_per_trade_stop(self) -> Optional[int]:
         """每次主循环调用: 检查当前持仓浮亏是否触及硬止损。
-        返回 0 表示需强平; 返回 None 表示无需动作。"""
+        返回 0 表示需强平; None 表示无需动作。"""
         pos = self.api.get_position(self.symbol)
         net = int(pos.pos_long - pos.pos_short)
         if net == 0:
@@ -66,7 +85,7 @@ class FuelGuardrails(RiskGuardrails):
         if occupied_margin <= 0:
             return None
         if float_profit < -self.cfg.per_trade_stop_pct * occupied_margin:
-            return 0  # 触发硬止损 -> 目标仓位归零
+            return 0
         return None
 
 
@@ -75,8 +94,8 @@ class FuelGuardrails(RiskGuardrails):
 # =============================================================================
 def position_table(balance: float, price: float = 3000.0,
                    margin_rate: float = 0.18) -> str:
-    vm = 10  # 合约乘数
-    margin_per_lot = price * vm * margin_rate  # ≈ 5400 元/手
+    vm = 10
+    margin_per_lot = price * vm * margin_rate
     rows = []
     for pct in (0.30, 0.40, 0.50):
         lots = math.floor(balance * pct / margin_per_lot)
@@ -88,6 +107,5 @@ def position_table(balance: float, price: float = 3000.0,
 
 
 if __name__ == "__main__":
-    # 改成你的实际资金量看一眼
     print(position_table(balance=50000))
     print(position_table(balance=100000))
