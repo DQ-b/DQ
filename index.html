@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>下载记录</title>
+  <script src="jszip.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -16,12 +17,7 @@
 
     h1 { font-size: 20px; font-weight: 600; margin-bottom: 20px; color: #111; }
 
-    .record-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      max-width: 700px;
-    }
+    .record-list { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
 
     .record-card {
       background: #fff;
@@ -43,142 +39,110 @@
     .record-meta { font-size: 12px; color: #888; }
 
     .files-toggle {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      display: flex; align-items: center; gap: 6px;
       padding: 6px 12px;
-      background: #f0f4ff;
-      color: #3b5bdb;
-      border: 1px solid #c5d0ff;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background .15s;
-      white-space: nowrap;
+      background: #f0f4ff; color: #3b5bdb;
+      border: 1px solid #c5d0ff; border-radius: 6px;
+      font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: background .15s; white-space: nowrap;
     }
     .files-toggle:hover { background: #e0e9ff; }
     .files-toggle .arrow { font-size: 10px; transition: transform .2s; }
     .files-toggle.open .arrow { transform: rotate(180deg); }
 
-    .files-panel {
-      display: none;
-      border-top: 1px solid #e5e7eb;
-      background: #fafbff;
-    }
+    .files-panel { display: none; border-top: 1px solid #e5e7eb; }
     .files-panel.open { display: block; }
 
-    .file-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 18px;
+    /* 文件行 */
+    .file-row {
       border-bottom: 1px solid #f0f1f5;
+    }
+    .file-row:last-child { border-bottom: none; }
+
+    .file-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 18px;
+      background: #fafbff;
       font-size: 13px;
     }
-    .file-item:last-child { border-bottom: none; }
 
     .file-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
     .file-name { flex: 1; color: #222; }
-    .file-size { color: #aaa; font-size: 12px; margin-right: 10px; }
+    .file-size { color: #aaa; font-size: 12px; margin-right: 8px; }
 
-    /* 操作按钮 */
     .btn {
-      padding: 4px 10px;
-      border-radius: 5px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      border: 1px solid;
+      padding: 4px 10px; border-radius: 5px;
+      font-size: 12px; font-weight: 500;
+      cursor: pointer; border: 1px solid;
       transition: background .15s, opacity .15s;
       white-space: nowrap;
     }
     .btn:disabled { opacity: .5; cursor: default; }
 
-    .btn-extract {
-      color: #d97706;
-      background: #fffbeb;
-      border-color: #fcd34d;
-    }
+    .btn-extract { color: #d97706; background: #fffbeb; border-color: #fcd34d; }
     .btn-extract:hover:not(:disabled) { background: #fef3c7; }
 
-    .btn-run {
-      color: #16a34a;
-      background: #f0fdf4;
-      border-color: #86efac;
-    }
+    .btn-run { color: #16a34a; background: #f0fdf4; border-color: #86efac; }
     .btn-run:hover:not(:disabled) { background: #dcfce7; }
 
-    .btn-running {
-      color: #9333ea;
-      background: #faf5ff;
-      border-color: #d8b4fe;
-      cursor: default;
-    }
-
     /* 解压进度 */
-    .extract-progress {
+    .progress-row {
       display: none;
-      align-items: center;
-      gap: 8px;
+      align-items: center; gap: 10px;
       padding: 8px 18px;
-      font-size: 12px;
-      color: #6b7280;
       background: #f9fafb;
       border-bottom: 1px solid #f0f1f5;
+      font-size: 12px; color: #6b7280;
     }
-    .extract-progress.show { display: flex; }
+    .progress-row.show { display: flex; }
+    .progress-bar-wrap { flex: 1; height: 4px; background: #e5e7eb; border-radius: 99px; overflow: hidden; }
+    .progress-bar { height: 100%; background: #3b5bdb; border-radius: 99px; width: 0%; transition: width .1s linear; }
 
-    .progress-bar-wrap {
-      flex: 1;
-      height: 4px;
-      background: #e5e7eb;
-      border-radius: 99px;
-      overflow: hidden;
-    }
-    .progress-bar {
-      height: 100%;
-      background: #3b5bdb;
-      border-radius: 99px;
-      width: 0%;
-      transition: width .1s linear;
-    }
-
-    /* 运行终端 */
-    .run-terminal {
+    /* 解压文件树 */
+    .tree-row {
       display: none;
+      padding: 10px 18px;
+      background: #f0f4ff;
+      border-bottom: 1px solid #e0e7ff;
+    }
+    .tree-row.show { display: block; }
+    .tree-title {
+      font-size: 11px; color: #6b7280; margin-bottom: 8px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .tree-files { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
+    .tree-file {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: #374151;
+      padding: 3px 6px; border-radius: 4px;
+      cursor: pointer; transition: background .12s;
+    }
+    .tree-file:hover { background: #dbe4ff; }
+    .tree-file .tf-icon { font-size: 13px; }
+    .tree-file .tf-name { flex: 1; }
+    .tree-file .tf-size { font-size: 11px; color: #9ca3af; }
+
+    /* 运行预览 iframe */
+    .preview-row {
+      display: none;
+      border-top: 1px solid #e5e7eb;
+    }
+    .preview-row.show { display: block; }
+    .preview-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px;
       background: #1e1e2e;
-      color: #cdd6f4;
-      font-family: "Menlo", "Consolas", monospace;
-      font-size: 12px;
-      padding: 12px 18px;
-      border-top: 1px solid #313244;
-      line-height: 1.8;
+      font-size: 12px; color: #cdd6f4;
+      font-family: monospace;
     }
-    .run-terminal.show { display: block; }
-    .run-terminal .line { opacity: 0; transition: opacity .15s; }
-    .run-terminal .line.visible { opacity: 1; }
-    .run-terminal .ok { color: #a6e3a1; }
-    .run-terminal .warn { color: #f9e2af; }
-    .run-terminal .cursor { display: inline-block; animation: blink 1s step-end infinite; }
-    @keyframes blink { 50% { opacity: 0; } }
-
-    /* 已解压文件列表 */
-    .extracted-files {
-      display: none;
-      padding: 6px 18px 10px;
-      background: #f9fafb;
-      border-bottom: 1px solid #f0f1f5;
+    .preview-close {
+      cursor: pointer; color: #f38ba8; font-size: 14px;
+      background: none; border: none; padding: 0 4px;
     }
-    .extracted-files.show { display: block; }
-    .extracted-files .ef-title { font-size: 11px; color: #9ca3af; margin-bottom: 6px; }
-    .extracted-files .ef-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: #374151;
-      padding: 3px 0;
+    .preview-iframe {
+      width: 100%; border: none;
+      background: #fff;
+      display: block;
     }
   </style>
 </head>
@@ -202,12 +166,9 @@ const records = [
     name: "产品设计资源包",
     date: "2025-06-02 09:47",
     files: [
-      { name: "UI组件.zip",   size: "12.4 MB", icon: "🗜️", type: "zip",
-        extracted: ["components/Button.sketch","components/Input.sketch","assets/icons.svg","README.md"] },
-      { name: "图标集.zip",   size: "4.1 MB",  icon: "🗜️", type: "zip",
-        extracted: ["icons/16px/","icons/24px/","icons/32px/","preview.png"] },
-      { name: "字体文件.zip", size: "2.0 MB",  icon: "🗜️", type: "zip",
-        extracted: ["PingFang-Regular.ttf","PingFang-Bold.ttf","LICENSE.txt"] },
+      { name: "UI组件.zip",   size: "3.1 KB",  icon: "🗜️", type: "zip", src: "packages/UI组件.zip",   entry: "index.html" },
+      { name: "图标集.zip",   size: "6.7 KB",  icon: "🗜️", type: "zip", src: "packages/图标集.zip",   entry: "preview.html" },
+      { name: "字体文件.zip", size: "1.8 KB",  icon: "🗜️", type: "zip", src: "packages/字体文件.zip", entry: "index.html" },
     ]
   },
   {
@@ -221,15 +182,22 @@ const records = [
   }
 ];
 
-// 运行日志模板
-const runLogs = [
-  { text: "$ ./start.sh", cls: "" },
-  { text: "正在初始化环境...", cls: "warn" },
-  { text: "✔ 依赖检查完成", cls: "ok" },
-  { text: "✔ 配置文件加载成功", cls: "ok" },
-  { text: "✔ 资源文件就绪", cls: "ok" },
-  { text: "服务已启动，监听端口 3000 ▊", cls: "ok cursor" },
-];
+function fileIcon(name) {
+  if (/\.html?$/i.test(name)) return "🌐";
+  if (/\.svg$/i.test(name))   return "🎨";
+  if (/\.md$/i.test(name))    return "📝";
+  if (/\.txt$/i.test(name))   return "📄";
+  if (/\.(ttf|woff2?)$/i.test(name)) return "🔤";
+  if (/\.(png|jpe?g|gif|webp)$/i.test(name)) return "🖼️";
+  if (/\/$/.test(name))       return "📁";
+  return "📄";
+}
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + " KB";
+  return (bytes/1024/1024).toFixed(1) + " MB";
+}
 
 const list = document.getElementById('recordList');
 
@@ -239,32 +207,40 @@ records.forEach((record, ri) => {
 
   const filesHTML = record.files.map((f, fi) => {
     const isZip = f.type === 'zip';
-    const btnHtml = isZip
+    const actionBtn = isZip
       ? `<button class="btn btn-extract" data-ri="${ri}" data-fi="${fi}">解压</button>`
-      : `<button class="btn btn-run" data-ri="${ri}" data-fi="${fi}">运行</button>`;
+      : `<span style="font-size:12px;color:#ccc">—</span>`;
 
     return `
-      <div class="file-item" id="fi-${ri}-${fi}">
-        <span class="file-icon">${f.icon}</span>
-        <span class="file-name">${f.name}</span>
-        <span class="file-size">${f.size}</span>
-        ${btnHtml}
-      </div>
-      ${isZip ? `
-        <div class="extract-progress" id="ep-${ri}-${fi}">
-          <span>解压中...</span>
-          <div class="progress-bar-wrap"><div class="progress-bar" id="pb-${ri}-${fi}"></div></div>
-          <span id="pct-${ri}-${fi}">0%</span>
+      <div class="file-row" id="row-${ri}-${fi}">
+        <div class="file-item">
+          <span class="file-icon">${f.icon}</span>
+          <span class="file-name">${f.name}</span>
+          <span class="file-size">${f.size}</span>
+          ${actionBtn}
         </div>
-        <div class="extracted-files" id="ef-${ri}-${fi}">
-          <div class="ef-title">已解压文件</div>
-          ${(f.extracted||[]).map(n=>`<div class="ef-item"><span>📁</span>${n}</div>`).join('')}
-          <div style="margin-top:8px">
-            <button class="btn btn-run" data-ri="${ri}" data-fi="${fi}" data-from="zip">运行</button>
+        ${isZip ? `
+          <div class="progress-row" id="pr-${ri}-${fi}">
+            <span>正在解压...</span>
+            <div class="progress-bar-wrap"><div class="progress-bar" id="pb-${ri}-${fi}"></div></div>
+            <span id="pct-${ri}-${fi}">0%</span>
           </div>
-        </div>
-        <div class="run-terminal" id="rt-${ri}-${fi}"></div>
-      ` : `<div class="run-terminal" id="rt-${ri}-${fi}"></div>`}
+          <div class="tree-row" id="tr-${ri}-${fi}">
+            <div class="tree-title">
+              <span>📦 已解压文件</span>
+              <button class="btn btn-run" data-ri="${ri}" data-fi="${fi}">▶ 运行</button>
+            </div>
+            <div class="tree-files" id="tf-${ri}-${fi}"></div>
+          </div>
+          <div class="preview-row" id="pv-${ri}-${fi}">
+            <div class="preview-header">
+              <span id="pvtitle-${ri}-${fi}">运行中...</span>
+              <button class="preview-close" data-ri="${ri}" data-fi="${fi}">✕ 关闭</button>
+            </div>
+            <iframe class="preview-iframe" id="iframe-${ri}-${fi}" height="420"></iframe>
+          </div>
+        ` : ''}
+      </div>
     `;
   }).join('');
 
@@ -284,8 +260,9 @@ records.forEach((record, ri) => {
   list.appendChild(card);
 });
 
-// Files 展开/收起
-list.addEventListener('click', e => {
+// 事件委托
+list.addEventListener('click', async e => {
+  // 展开/收起
   const toggle = e.target.closest('.files-toggle');
   if (toggle) {
     const ri = toggle.dataset.ri;
@@ -295,68 +272,145 @@ list.addEventListener('click', e => {
     return;
   }
 
-  // 解压按钮
+  // 解压
   const extractBtn = e.target.closest('.btn-extract');
   if (extractBtn) {
-    const { ri, fi } = extractBtn.dataset;
-    doExtract(ri, fi, extractBtn);
+    await doExtract(extractBtn.dataset.ri, extractBtn.dataset.fi, extractBtn);
     return;
   }
 
-  // 运行按钮
+  // 运行
   const runBtn = e.target.closest('.btn-run');
   if (runBtn) {
-    const { ri, fi } = runBtn.dataset;
-    doRun(ri, fi, runBtn);
+    doRun(runBtn.dataset.ri, runBtn.dataset.fi, runBtn);
     return;
+  }
+
+  // 关闭预览
+  const closeBtn = e.target.closest('.preview-close');
+  if (closeBtn) {
+    const { ri, fi } = closeBtn.dataset;
+    document.getElementById(`pv-${ri}-${fi}`).classList.remove('show');
+    document.getElementById(`iframe-${ri}-${fi}`).src = '';
+    return;
+  }
+
+  // 点击文件树中的文件 → 在 iframe 里展示
+  const treeFile = e.target.closest('.tree-file');
+  if (treeFile) {
+    const { ri, fi, fname } = treeFile.dataset;
+    const zip = window._zips?.[`${ri}-${fi}`];
+    if (!zip) return;
+    await openFileInIframe(ri, fi, zip, fname);
   }
 });
 
-function doExtract(ri, fi, btn) {
+// 已解压 zip 缓存
+window._zips = {};
+
+async function doExtract(ri, fi, btn) {
   btn.disabled = true;
   btn.textContent = '解压中…';
 
-  const ep = document.getElementById(`ep-${ri}-${fi}`);
+  const f = records[ri].files[fi];
+  const pr = document.getElementById(`pr-${ri}-${fi}`);
   const pb = document.getElementById(`pb-${ri}-${fi}`);
   const pct = document.getElementById(`pct-${ri}-${fi}`);
-  ep.classList.add('show');
+  pr.classList.add('show');
 
-  let progress = 0;
+  // 动画进度
+  let prog = 0;
   const iv = setInterval(() => {
-    progress += Math.random() * 18 + 4;
-    if (progress >= 100) {
-      progress = 100;
-      clearInterval(iv);
-      pb.style.width = '100%';
-      pct.textContent = '100%';
-      setTimeout(() => {
-        ep.classList.remove('show');
-        document.getElementById(`ef-${ri}-${fi}`).classList.add('show');
-        btn.textContent = '已解压';
-      }, 300);
-    } else {
-      pb.style.width = progress + '%';
-      pct.textContent = Math.floor(progress) + '%';
-    }
-  }, 120);
+    prog = Math.min(prog + Math.random() * 15 + 5, 90);
+    pb.style.width = prog + '%';
+    pct.textContent = Math.floor(prog) + '%';
+  }, 80);
+
+  try {
+    const resp = await fetch(f.src);
+    const buf  = await resp.arrayBuffer();
+    const zip  = await JSZip.loadAsync(buf);
+    window._zips[`${ri}-${fi}`] = zip;
+
+    clearInterval(iv);
+    pb.style.width = '100%';
+    pct.textContent = '100%';
+
+    setTimeout(() => {
+      pr.classList.remove('show');
+
+      // 填充文件树
+      const container = document.getElementById(`tf-${ri}-${fi}`);
+      const entries = Object.keys(zip.files).sort();
+      container.innerHTML = entries.map(name => {
+        const file = zip.files[name];
+        const size = file._data ? fmtSize(file._data.uncompressedSize || 0) : '';
+        return `
+          <div class="tree-file" data-ri="${ri}" data-fi="${fi}" data-fname="${name}">
+            <span class="tf-icon">${fileIcon(name)}</span>
+            <span class="tf-name">${name}</span>
+            <span class="tf-size">${file.dir ? '' : size}</span>
+          </div>`;
+      }).join('');
+
+      document.getElementById(`tr-${ri}-${fi}`).classList.add('show');
+      btn.textContent = '✓ 已解压';
+    }, 200);
+  } catch (err) {
+    clearInterval(iv);
+    pr.classList.remove('show');
+    btn.disabled = false;
+    btn.textContent = '重试';
+    alert('解压失败: ' + err.message);
+  }
 }
 
-function doRun(ri, fi, btn) {
+async function doRun(ri, fi, btn) {
+  const f = records[ri].files[fi];
+  const zip = window._zips[`${ri}-${fi}`];
+  if (!zip) return;
   btn.disabled = true;
-  btn.className = 'btn btn-running';
   btn.textContent = '运行中…';
+  await openFileInIframe(ri, fi, zip, f.entry);
+  setTimeout(() => { btn.disabled = false; btn.textContent = '▶ 运行'; }, 1000);
+}
 
-  const terminal = document.getElementById(`rt-${ri}-${fi}`);
-  terminal.classList.add('show');
-  terminal.innerHTML = '';
+async function openFileInIframe(ri, fi, zip, entryName) {
+  const pv     = document.getElementById(`pv-${ri}-${fi}`);
+  const iframe = document.getElementById(`iframe-${ri}-${fi}`);
+  const title  = document.getElementById(`pvtitle-${ri}-${fi}`);
 
-  runLogs.forEach((log, i) => {
-    const line = document.createElement('div');
-    line.className = `line ${log.cls}`;
-    line.innerHTML = log.text.replace('▊', '<span class="cursor">▊</span>');
-    terminal.appendChild(line);
-    setTimeout(() => line.classList.add('visible'), i * 350);
-  });
+  title.textContent = '⚙ 加载中...';
+  pv.classList.add('show');
+  iframe.src = '';
+
+  try {
+    // 把 zip 内所有文件转成 blob URL，构造完整 HTML
+    const urls = {};
+    for (const [name, file] of Object.entries(zip.files)) {
+      if (!file.dir) {
+        const blob = await file.async('blob');
+        urls[name] = URL.createObjectURL(blob);
+      }
+    }
+
+    // 读取入口 HTML，替换相对路径引用
+    let html = await zip.files[entryName].async('string');
+    // 替换 src="xxx" href="xxx" url(xxx) 中的相对路径
+    for (const [name, burl] of Object.entries(urls)) {
+      // escape for regex
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      html = html.replace(new RegExp(`(['"])${escaped}\\1`, 'g'), `$1${burl}$1`);
+      html = html.replace(new RegExp(`url\\(${escaped}\\)`, 'g'), `url(${burl})`);
+    }
+
+    const blob = new Blob([html], { type: 'text/html' });
+    iframe.src = URL.createObjectURL(blob);
+    title.textContent = `▶ ${entryName}`;
+  } catch(err) {
+    title.textContent = '❌ 加载失败';
+    console.error(err);
+  }
 }
 </script>
 </body>
