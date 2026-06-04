@@ -325,9 +325,17 @@ class TradingOrchestrator:
     def run(self):
         self.guard.mark_session_start()
         self.api.create_task(self._decision_loop())   # 注册后台 LLM 协程
+        # 风控如果带逐笔硬止损 (FuelGuardrails) 就在每次 tick 检查一次
+        hard_stop = getattr(self.guard, "check_per_trade_stop", None)
         while True:
             self.api.wait_update()
             self.engine.update()                       # 快: 更新特征
+            if hard_stop is not None:
+                forced = hard_stop()
+                if forced is not None:                 # 触发硬止损 -> 立即平仓
+                    self.target_pos.set_target_volume(forced)
+                    self._staged_target = None
+                    continue
             if self._staged_target is not None:        # 快: 执行已过风控的目标仓位
                 self.target_pos.set_target_volume(self._staged_target)
                 self._staged_target = None
@@ -434,7 +442,8 @@ class ReasoningBacktester:
 # 启动入口示例
 # =============================================================================
 if __name__ == "__main__":
-    SYMBOL = "SHFE.cu2401"
+    # 燃油 2609 主力合约 (配合 fu2609_config.py 的激进波段配置)
+    from fu2609_config import SYMBOL, FuelRiskConfig, FuelGuardrails
 
     # —— 凭据从环境变量读取, 不写进源码 ——
     # 在终端先设置:
@@ -454,12 +463,13 @@ if __name__ == "__main__":
     if LIVE:
         api = TqApi(TqSim(), auth=TqAuth(TQ_USER, TQ_PASS))
         brain = DecisionBrain(DEEPSEEK_KEY)
-        guard = RiskGuardrails(api, SYMBOL, RiskConfig())
+        # 用燃油专用风控 (激进仓位 45% + 8% 日内熔断 + 40% 单笔硬止损)
+        guard = FuelGuardrails(api, SYMBOL, FuelRiskConfig())
         TradingOrchestrator(api, SYMBOL, brain, guard).run()
     else:
         api = TqApi(
             TqSim(init_balance=200000),
-            backtest=TqBacktest(start_dt=date(2023, 9, 1), end_dt=date(2023, 9, 10)),
+            backtest=TqBacktest(start_dt=date(2026, 5, 1), end_dt=date(2026, 5, 31)),
             auth=TqAuth(TQ_USER, TQ_PASS),
         )
         brain = DecisionBrain(DEEPSEEK_KEY)

@@ -20,13 +20,14 @@ import math
 
 from tqsdk import TqApi
 
-# 把这段 RiskConfig 替换/扩展 tqsdk_deepseek_arch.py 里的同名类
+from tqsdk_deepseek_arch import RiskConfig, RiskGuardrails
+
 SYMBOL = "SHFE.fu2609"
 
 
 @dataclass
-class FuelRiskConfig:
-    # —— 按你的选择调好的参数 ——
+class FuelRiskConfig(RiskConfig):
+    # —— 按你的选择调好的参数 (覆盖 RiskConfig 的默认值) ——
     max_position_pct: float = 0.45      # 激进: 单笔目标仓位上限 45% 权益
     daily_loss_limit_pct: float = 0.08  # 当日亏损 8% 全天禁开仓
     max_risk_ratio: float = 0.60        # 账户总保证金占用率上限 (激进仓位下放宽)
@@ -37,21 +38,12 @@ class FuelRiskConfig:
     # 说明: 40%保证金浮亏 ≈ 价格反向约 (0.40 * 18% / 1) ≈ 7% 时触发, 早于15%涨跌停
 
 
-class FuelGuardrails:
-    """在原 RiskGuardrails 基础上增加逐笔止损。建议直接用这个版本。"""
+class FuelGuardrails(RiskGuardrails):
+    """在 RiskGuardrails 基础上增加逐笔浮亏硬止损。建议直接用这个版本。"""
 
     def __init__(self, api: TqApi, symbol: str = SYMBOL,
                  config: Optional[FuelRiskConfig] = None):
-        self.api = api
-        self.symbol = symbol
-        self.cfg = config or FuelRiskConfig()
-        self.quote = api.get_quote(symbol)
-        self._session_start_equity: Optional[float] = None
-        self._daily_locked = False
-
-    def mark_session_start(self):
-        self._session_start_equity = float(self.api.get_account().balance)
-        self._daily_locked = False
+        super().__init__(api, symbol, config or FuelRiskConfig())
 
     def lots_from_pct(self, size_pct: float) -> int:
         """size_pct -> 手数。用实时 quote.margin (每手保证金), 不写死。"""
