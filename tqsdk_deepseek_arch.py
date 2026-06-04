@@ -445,8 +445,8 @@ class ReasoningBacktester:
 # 启动入口示例
 # =============================================================================
 if __name__ == "__main__":
-    # 燃油 2609 主力合约 (配合 fu2609_config.py 的激进波段配置)
-    from fu2609_config import SYMBOL, FuelRiskConfig, FuelGuardrails
+    # 燃油 2609 主力合约，风控参数内联，避免跨模块循环导入
+    SYMBOL = "SHFE.fu2609"
 
     # —— 凭据从环境变量读取, 不写进源码 ——
     # 在终端先设置:
@@ -463,10 +463,18 @@ if __name__ == "__main__":
 
     LIVE = False  # 先用回测/模拟跑通, 千万别一上来就实盘
 
+    # 激进燃油风控参数 (来自 fu2609_config.FuelRiskConfig)
+    _fuel_cfg = RiskConfig(
+        max_risk_ratio=0.60,
+        max_position_pct=0.45,
+        daily_loss_limit_pct=0.08,
+        min_confidence=0.65,
+    )
+
     if LIVE:
         api = TqApi(TqSim(), auth=TqAuth(TQ_USER, TQ_PASS))
         brain = DecisionBrain(DEEPSEEK_KEY)
-        guard = FuelGuardrails(api, SYMBOL, FuelRiskConfig())
+        guard = RiskGuardrails(api, SYMBOL, _fuel_cfg)
         TradingOrchestrator(api, SYMBOL, brain, guard).run()
     else:
         print("[启动] 正在连接快期服务器并初始化回测...")
@@ -479,6 +487,7 @@ if __name__ == "__main__":
         print("[启动] 连接成功，开始加载 K 线数据...")
         brain = DecisionBrain(DEEPSEEK_KEY)
         # sample_interval=30: 每 30 根 1 分钟 K 线决策一次, 1 个交易日约 15 次决策
+        _guard = RiskGuardrails(api, SYMBOL, _fuel_cfg)
         bt = ReasoningBacktester(api, SYMBOL, brain, sample_interval=30)
         api.create_task(bt._evaluate_loop())
         try:
