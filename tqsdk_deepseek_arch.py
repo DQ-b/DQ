@@ -604,7 +604,7 @@ if __name__ == "__main__":
         api = TqApi(
             TqSim(init_balance=200000),
             # 1 个交易日: 给 DeepSeek 足够时间回应每个决策 (回测会快进, LLM 调用是真实网络)
-            backtest=TqBacktest(start_dt=date(2026, 5, 11), end_dt=date(2026, 5, 12)),
+            backtest=TqBacktest(start_dt=date(2026, 4, 7), end_dt=date(2026, 4, 8)),
             auth=TqAuth(TQ_USER, TQ_PASS),
         )
         print("[启动] 连接成功，开始加载 K 线数据...")
