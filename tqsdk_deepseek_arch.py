@@ -93,14 +93,38 @@ class MarketFeatures:
         else:
             book = "盘口基本均衡"
         oi_desc = "增仓" if self.oi_change > 0 else "减仓" if self.oi_change < 0 else "持仓不变"
+
+        # 偏离分级
+        dev = self.price_vs_ma5
+        if dev > 0.02:
+            dev_warn = f"⚠️ 价格大幅高于MA5({dev:+.2%})，回归风险高，追多需谨慎"
+        elif dev > 0.01:
+            dev_warn = f"价格偏高于MA5({dev:+.2%})，均值回归压力存在"
+        elif dev < -0.02:
+            dev_warn = f"⚠️ 价格大幅低于MA5({dev:+.2%})，反弹概率上升，追空需谨慎"
+        elif dev < -0.01:
+            dev_warn = f"价格偏低于MA5({dev:+.2%})，均值回归支撑存在"
+        else:
+            dev_warn = f"价格贴近MA5({dev:+.2%})，偏离不明显"
+
+        # 成交量信号
+        if self.volume_burst >= 2.0:
+            vol_signal = f"🔥 成交量爆发({self.volume_burst:.1f}x)，突破有效性高"
+        elif self.volume_burst >= 1.5:
+            vol_signal = f"成交量放大({self.volume_burst:.1f}x)，可顺势参与"
+        elif self.volume_burst >= 0.8:
+            vol_signal = f"成交量正常({self.volume_burst:.1f}x)，信号一般"
+        else:
+            vol_signal = f"⚠️ 成交量萎缩({self.volume_burst:.1f}x)，不宜追势"
+
         return (
             f"合约 {self.symbol} | 最新价 {self.last_price:.1f}\n"
             f"趋势: {self.trend} | MA5={self.ma5:.1f} MA20={self.ma20:.1f} MA60={self.ma60:.1f}\n"
-            f"价格偏离: 距MA5={self.price_vs_ma5:+.2%} 距MA20={self.price_vs_ma20:+.2%}\n"
-            f"波幅={self.price_range_pct:.2%} | 波动率={self.realized_vol:.2%}\n"
+            f"偏离: {dev_warn}\n"
+            f"距MA20={self.price_vs_ma20:+.2%} | 波幅={self.price_range_pct:.2%} | 波动率={self.realized_vol:.2%}\n"
             f"盘口: {self.orderbook_imbalance:+.2f} ({book}) | {oi_desc} {abs(self.oi_change):.0f}手\n"
-            f"成交量异动={self.volume_burst:.1f}x\n"
-            f"请根据以上特征给出交易决策。趋势明确时应给出 long/short，不要总是 hold。"
+            f"成交量: {vol_signal}\n"
+            f"请结合均值回归原则和成交量确认给出决策。"
         )
 
 
@@ -198,14 +222,16 @@ class FeatureEngine:
 # =============================================================================
 class DecisionBrain:
     SYSTEM_PROMPT = (
-        "你是期货短线交易决策引擎，专注燃油期货波段交易。"
-        "根据给定的市场特征（趋势、均线、盘口、波动率）给出明确的交易决策。\n"
-        "决策规则:\n"
-        "- 多头趋势/短期偏多 + 买盘占优 + 成交量放大 → 优先考虑 long\n"
-        "- 空头趋势/短期偏空 + 卖盘占优 + 成交量放大 → 优先考虑 short\n"
-        "- 震荡且无明显信号 → hold，但不要总是 hold\n"
-        "- size_pct 表示建议仓位占权益比例(0-100)，有明确信号时给 20-40\n"
-        "只输出一个 JSON 对象，不要任何解释或 markdown。字段:\n"
+        "你是期货短线交易决策引擎，专注燃油期货波段交易。\n"
+        "核心原则（按优先级）:\n"
+        "1. 均值回归优先: 价格偏离MA5超过+1% → 警惕做多/考虑做空回归；偏离-1%以上 → 警惕做空/考虑做多回归\n"
+        "2. 成交量确认: 顺势开仓必须 volume_burst>1.5 才有效；无放量时降低仓位或hold\n"
+        "3. 趋势跟随(次要): 仅在均线多头排列+放量时顺势做多；空头排列+放量时顺势做空\n"
+        "4. 避免追高杀低: 若价格已大幅偏离均线且无放量，大概率是末端，不追\n"
+        "决策输出:\n"
+        "- 有明确信号: long或short，size_pct=20-35，confidence=0.6-0.8\n"
+        "- 信号模糊/无放量: hold，size_pct=0，confidence=0.4-0.5\n"
+        "只输出JSON，不要任何解释或markdown:\n"
         '{"action":"long|short|close|hold","size_pct":0-100,'
         '"confidence":0-1,"reason":"简短中文依据"}'
     )
