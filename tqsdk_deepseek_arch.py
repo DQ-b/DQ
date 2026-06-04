@@ -222,18 +222,18 @@ class FeatureEngine:
 # =============================================================================
 class DecisionBrain:
     SYSTEM_PROMPT = (
-        "你是期货短线交易决策引擎，专注燃油期货波段交易。\n"
-        "决策框架（三选一，按信号强度）:\n"
-        "A. 均值回归信号(高优先): 价格偏离MA5超过±1%时，向均线方向交易\n"
-        "   - 偏离>+1%: 做空(short)，等待价格回归MA5\n"
-        "   - 偏离<-1%: 做多(long)，等待价格反弹MA5\n"
-        "B. 趋势+放量信号(中优先): volume_burst≥1.5 且趋势明确时顺势\n"
-        "   - 多头趋势+放量: long；空头趋势+放量: short\n"
-        "C. 趋势明确但无放量(低优先): 轻仓(size_pct=10-15)顺势，confidence不超过0.6\n"
-        "   - 成交量萎缩时仍可小仓位参与，不要全部hold\n"
-        "hold 仅用于: 震荡趋势 + 价格贴近均线(<±0.5%) + 无放量 三者同时满足\n"
+        "你是燃油期货短线交易决策引擎，必须给出明确的交易建议，禁止无故持仓观望。\n\n"
+        "【强制规则】每次决策必须从 long/short/hold 中选一，且:\n"
+        "- 只要价格偏离MA5超过±0.2%，必须给出 long 或 short 方向\n"
+        "- 趋势为「多头趋势」或「短期偏多」时，优先考虑 long\n"
+        "- 趋势为「空头趋势」或「短期偏空」时，优先考虑 short\n"
+        "- hold 只允许在「震荡趋势」且偏离MA5<±0.1% 时使用\n\n"
+        "【仓位规则】\n"
+        "- 偏离MA5超±1% 或 volume_burst≥1.5: size_pct=25~35, confidence≥0.7\n"
+        "- 偏离MA5超±0.2% 或趋势明确: size_pct=15~20, confidence=0.5~0.65\n"
+        "- 其余情况必须选 long/short 轻仓: size_pct=10, confidence=0.5\n\n"
         "只输出JSON，不要任何解释或markdown:\n"
-        '{"action":"long|short|close|hold","size_pct":0-100,'
+        '{"action":"long|short|hold","size_pct":0-100,'
         '"confidence":0-1,"reason":"简短中文依据"}'
     )
 
@@ -605,14 +605,14 @@ if __name__ == "__main__":
             TqSim(init_balance=200000),
             # 1 个交易日: 给 DeepSeek 足够时间回应每个决策 (回测会快进, LLM 调用是真实网络)
             # 拉宽到一周，确保覆盖有趋势的交易日
-            backtest=TqBacktest(start_dt=date(2026, 3, 16), end_dt=date(2026, 3, 21)),
+            backtest=TqBacktest(start_dt=date(2026, 1, 5), end_dt=date(2026, 1, 9)),
             auth=TqAuth(TQ_USER, TQ_PASS),
         )
         print("[启动] 连接成功，开始加载 K 线数据...")
         brain = DecisionBrain(DEEPSEEK_KEY)
         # sample_interval=30: 每 30 根 1 分钟 K 线决策一次, 1 个交易日约 15 次决策
         # 一周数据，每 60 根 K 线决策一次，约 20 次决策，5-10 分钟跑完
-        bt = ReasoningBacktester(api, SYMBOL, brain, sample_interval=60)
+        bt = ReasoningBacktester(api, SYMBOL, brain, sample_interval=30)
         print("[启动] 开始同步回测，每 30 根 K 线调用一次 DeepSeek...")
         try:
             bt.run_sync()   # 同步主循环，阻塞等待每次 DeepSeek 响应
