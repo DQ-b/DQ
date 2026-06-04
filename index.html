@@ -14,18 +14,13 @@
       padding: 32px 16px;
     }
 
-    h1 {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 20px;
-      color: #111;
-    }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 20px; color: #111; }
 
     .record-list {
       display: flex;
       flex-direction: column;
       gap: 12px;
-      max-width: 680px;
+      max-width: 700px;
     }
 
     .record-card {
@@ -43,21 +38,9 @@
       padding: 14px 18px;
     }
 
-    .record-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .record-name {
-      font-size: 15px;
-      font-weight: 500;
-    }
-
-    .record-meta {
-      font-size: 12px;
-      color: #888;
-    }
+    .record-info { display: flex; flex-direction: column; gap: 4px; }
+    .record-name { font-size: 15px; font-weight: 500; }
+    .record-meta { font-size: 12px; color: #888; }
 
     .files-toggle {
       display: flex;
@@ -71,144 +54,310 @@
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
-      transition: background .15s, border-color .15s;
+      transition: background .15s;
       white-space: nowrap;
     }
-
-    .files-toggle:hover {
-      background: #e0e9ff;
-      border-color: #7c98ff;
-    }
-
-    .files-toggle .arrow {
-      display: inline-block;
-      font-size: 10px;
-      transition: transform .2s;
-    }
-
-    .files-toggle.open .arrow {
-      transform: rotate(180deg);
-    }
+    .files-toggle:hover { background: #e0e9ff; }
+    .files-toggle .arrow { font-size: 10px; transition: transform .2s; }
+    .files-toggle.open .arrow { transform: rotate(180deg); }
 
     .files-panel {
       display: none;
       border-top: 1px solid #e5e7eb;
       background: #fafbff;
     }
-
-    .files-panel.open {
-      display: block;
-    }
+    .files-panel.open { display: block; }
 
     .file-item {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 10px 18px;
-      font-size: 13px;
       border-bottom: 1px solid #f0f1f5;
+      font-size: 13px;
     }
-
     .file-item:last-child { border-bottom: none; }
 
-    .file-icon {
-      font-size: 16px;
-      width: 20px;
-      text-align: center;
-      flex-shrink: 0;
-    }
+    .file-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+    .file-name { flex: 1; color: #222; }
+    .file-size { color: #aaa; font-size: 12px; margin-right: 10px; }
 
-    .file-name {
-      flex: 1;
-      color: #222;
-    }
-
-    .file-size {
-      color: #aaa;
+    /* 操作按钮 */
+    .btn {
+      padding: 4px 10px;
+      border-radius: 5px;
       font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid;
+      transition: background .15s, opacity .15s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: .5; cursor: default; }
+
+    .btn-extract {
+      color: #d97706;
+      background: #fffbeb;
+      border-color: #fcd34d;
+    }
+    .btn-extract:hover:not(:disabled) { background: #fef3c7; }
+
+    .btn-run {
+      color: #16a34a;
+      background: #f0fdf4;
+      border-color: #86efac;
+    }
+    .btn-run:hover:not(:disabled) { background: #dcfce7; }
+
+    .btn-running {
+      color: #9333ea;
+      background: #faf5ff;
+      border-color: #d8b4fe;
+      cursor: default;
+    }
+
+    /* 解压进度 */
+    .extract-progress {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      font-size: 12px;
+      color: #6b7280;
+      background: #f9fafb;
+      border-bottom: 1px solid #f0f1f5;
+    }
+    .extract-progress.show { display: flex; }
+
+    .progress-bar-wrap {
+      flex: 1;
+      height: 4px;
+      background: #e5e7eb;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #3b5bdb;
+      border-radius: 99px;
+      width: 0%;
+      transition: width .1s linear;
+    }
+
+    /* 运行终端 */
+    .run-terminal {
+      display: none;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      font-family: "Menlo", "Consolas", monospace;
+      font-size: 12px;
+      padding: 12px 18px;
+      border-top: 1px solid #313244;
+      line-height: 1.8;
+    }
+    .run-terminal.show { display: block; }
+    .run-terminal .line { opacity: 0; transition: opacity .15s; }
+    .run-terminal .line.visible { opacity: 1; }
+    .run-terminal .ok { color: #a6e3a1; }
+    .run-terminal .warn { color: #f9e2af; }
+    .run-terminal .cursor { display: inline-block; animation: blink 1s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* 已解压文件列表 */
+    .extracted-files {
+      display: none;
+      padding: 6px 18px 10px;
+      background: #f9fafb;
+      border-bottom: 1px solid #f0f1f5;
+    }
+    .extracted-files.show { display: block; }
+    .extracted-files .ef-title { font-size: 11px; color: #9ca3af; margin-bottom: 6px; }
+    .extracted-files .ef-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #374151;
+      padding: 3px 0;
     }
   </style>
 </head>
 <body>
 
 <h1>下载记录</h1>
-
 <div class="record-list" id="recordList"></div>
 
 <script>
-  const records = [
-    {
-      name: "2024年第三季度财务报告",
-      date: "2025-06-03 14:22",
-      files: [
-        { name: "财务摘要.pdf", size: "1.2 MB", icon: "📄" },
-        { name: "详细数据.xlsx", size: "3.8 MB", icon: "📊" },
-        { name: "附件说明.docx", size: "256 KB", icon: "📝" },
-      ]
-    },
-    {
-      name: "产品设计资源包",
-      date: "2025-06-02 09:47",
-      files: [
-        { name: "UI组件.sketch", size: "12.4 MB", icon: "🎨" },
-        { name: "图标集.zip", size: "4.1 MB", icon: "🗜️" },
-        { name: "字体文件.zip", size: "2.0 MB", icon: "🗜️" },
-      ]
-    },
-    {
-      name: "技术文档合集",
-      date: "2025-06-01 16:05",
-      files: [
-        { name: "API参考手册.pdf", size: "5.6 MB", icon: "📄" },
-        { name: "架构图.png", size: "890 KB", icon: "🖼️" },
-        { name: "变更日志.md", size: "48 KB", icon: "📝" },
-      ]
-    }
-  ];
+const records = [
+  {
+    name: "2024年第三季度财务报告",
+    date: "2025-06-03 14:22",
+    files: [
+      { name: "财务摘要.pdf",  size: "1.2 MB", icon: "📄", type: "pdf" },
+      { name: "详细数据.xlsx", size: "3.8 MB", icon: "📊", type: "xlsx" },
+      { name: "附件说明.docx", size: "256 KB", icon: "📝", type: "docx" },
+    ]
+  },
+  {
+    name: "产品设计资源包",
+    date: "2025-06-02 09:47",
+    files: [
+      { name: "UI组件.zip",   size: "12.4 MB", icon: "🗜️", type: "zip",
+        extracted: ["components/Button.sketch","components/Input.sketch","assets/icons.svg","README.md"] },
+      { name: "图标集.zip",   size: "4.1 MB",  icon: "🗜️", type: "zip",
+        extracted: ["icons/16px/","icons/24px/","icons/32px/","preview.png"] },
+      { name: "字体文件.zip", size: "2.0 MB",  icon: "🗜️", type: "zip",
+        extracted: ["PingFang-Regular.ttf","PingFang-Bold.ttf","LICENSE.txt"] },
+    ]
+  },
+  {
+    name: "技术文档合集",
+    date: "2025-06-01 16:05",
+    files: [
+      { name: "API参考手册.pdf", size: "5.6 MB", icon: "📄", type: "pdf" },
+      { name: "架构图.png",      size: "890 KB", icon: "🖼️", type: "png" },
+      { name: "变更日志.md",     size: "48 KB",  icon: "📝", type: "md" },
+    ]
+  }
+];
 
-  const list = document.getElementById('recordList');
+// 运行日志模板
+const runLogs = [
+  { text: "$ ./start.sh", cls: "" },
+  { text: "正在初始化环境...", cls: "warn" },
+  { text: "✔ 依赖检查完成", cls: "ok" },
+  { text: "✔ 配置文件加载成功", cls: "ok" },
+  { text: "✔ 资源文件就绪", cls: "ok" },
+  { text: "服务已启动，监听端口 3000 ▊", cls: "ok cursor" },
+];
 
-  records.forEach((record, index) => {
-    const card = document.createElement('div');
-    card.className = 'record-card';
+const list = document.getElementById('recordList');
 
-    const fileCount = record.files.length;
+records.forEach((record, ri) => {
+  const card = document.createElement('div');
+  card.className = 'record-card';
 
-    const filesHTML = record.files.map(f => `
-      <div class="file-item">
+  const filesHTML = record.files.map((f, fi) => {
+    const isZip = f.type === 'zip';
+    const btnHtml = isZip
+      ? `<button class="btn btn-extract" data-ri="${ri}" data-fi="${fi}">解压</button>`
+      : `<button class="btn btn-run" data-ri="${ri}" data-fi="${fi}">运行</button>`;
+
+    return `
+      <div class="file-item" id="fi-${ri}-${fi}">
         <span class="file-icon">${f.icon}</span>
         <span class="file-name">${f.name}</span>
         <span class="file-size">${f.size}</span>
+        ${btnHtml}
       </div>
-    `).join('');
-
-    card.innerHTML = `
-      <div class="record-main">
-        <div class="record-info">
-          <span class="record-name">${record.name}</span>
-          <span class="record-meta">${record.date}</span>
+      ${isZip ? `
+        <div class="extract-progress" id="ep-${ri}-${fi}">
+          <span>解压中...</span>
+          <div class="progress-bar-wrap"><div class="progress-bar" id="pb-${ri}-${fi}"></div></div>
+          <span id="pct-${ri}-${fi}">0%</span>
         </div>
-        <button class="files-toggle" data-index="${index}">
-          Files (${fileCount}) <span class="arrow">▼</span>
-        </button>
-      </div>
-      <div class="files-panel" id="panel-${index}">
-        ${filesHTML}
-      </div>
+        <div class="extracted-files" id="ef-${ri}-${fi}">
+          <div class="ef-title">已解压文件</div>
+          ${(f.extracted||[]).map(n=>`<div class="ef-item"><span>📁</span>${n}</div>`).join('')}
+          <div style="margin-top:8px">
+            <button class="btn btn-run" data-ri="${ri}" data-fi="${fi}" data-from="zip">运行</button>
+          </div>
+        </div>
+        <div class="run-terminal" id="rt-${ri}-${fi}"></div>
+      ` : `<div class="run-terminal" id="rt-${ri}-${fi}"></div>`}
     `;
+  }).join('');
 
-    list.appendChild(card);
-  });
+  card.innerHTML = `
+    <div class="record-main">
+      <div class="record-info">
+        <span class="record-name">${record.name}</span>
+        <span class="record-meta">${record.date}</span>
+      </div>
+      <button class="files-toggle" data-ri="${ri}">
+        Files (${record.files.length}) <span class="arrow">▼</span>
+      </button>
+    </div>
+    <div class="files-panel" id="fp-${ri}">${filesHTML}</div>
+  `;
 
-  document.getElementById('recordList').addEventListener('click', e => {
-    const btn = e.target.closest('.files-toggle');
-    if (!btn) return;
-    const idx = btn.dataset.index;
-    const panel = document.getElementById(`panel-${idx}`);
-    const isOpen = panel.classList.toggle('open');
-    btn.classList.toggle('open', isOpen);
+  list.appendChild(card);
+});
+
+// Files 展开/收起
+list.addEventListener('click', e => {
+  const toggle = e.target.closest('.files-toggle');
+  if (toggle) {
+    const ri = toggle.dataset.ri;
+    const panel = document.getElementById(`fp-${ri}`);
+    const open = panel.classList.toggle('open');
+    toggle.classList.toggle('open', open);
+    return;
+  }
+
+  // 解压按钮
+  const extractBtn = e.target.closest('.btn-extract');
+  if (extractBtn) {
+    const { ri, fi } = extractBtn.dataset;
+    doExtract(ri, fi, extractBtn);
+    return;
+  }
+
+  // 运行按钮
+  const runBtn = e.target.closest('.btn-run');
+  if (runBtn) {
+    const { ri, fi } = runBtn.dataset;
+    doRun(ri, fi, runBtn);
+    return;
+  }
+});
+
+function doExtract(ri, fi, btn) {
+  btn.disabled = true;
+  btn.textContent = '解压中…';
+
+  const ep = document.getElementById(`ep-${ri}-${fi}`);
+  const pb = document.getElementById(`pb-${ri}-${fi}`);
+  const pct = document.getElementById(`pct-${ri}-${fi}`);
+  ep.classList.add('show');
+
+  let progress = 0;
+  const iv = setInterval(() => {
+    progress += Math.random() * 18 + 4;
+    if (progress >= 100) {
+      progress = 100;
+      clearInterval(iv);
+      pb.style.width = '100%';
+      pct.textContent = '100%';
+      setTimeout(() => {
+        ep.classList.remove('show');
+        document.getElementById(`ef-${ri}-${fi}`).classList.add('show');
+        btn.textContent = '已解压';
+      }, 300);
+    } else {
+      pb.style.width = progress + '%';
+      pct.textContent = Math.floor(progress) + '%';
+    }
+  }, 120);
+}
+
+function doRun(ri, fi, btn) {
+  btn.disabled = true;
+  btn.className = 'btn btn-running';
+  btn.textContent = '运行中…';
+
+  const terminal = document.getElementById(`rt-${ri}-${fi}`);
+  terminal.classList.add('show');
+  terminal.innerHTML = '';
+
+  runLogs.forEach((log, i) => {
+    const line = document.createElement('div');
+    line.className = `line ${log.cls}`;
+    line.innerHTML = log.text.replace('▊', '<span class="cursor">▊</span>');
+    terminal.appendChild(line);
+    setTimeout(() => line.classList.add('visible'), i * 350);
   });
+}
 </script>
-
 </body>
 </html>
