@@ -231,16 +231,17 @@ class FeatureEngine:
 # =============================================================================
 class DecisionBrain:
     SYSTEM_PROMPT = (
-        "你是燃油期货短线交易决策引擎。根据动量和均线偏离给出明确方向。\n\n"
-        "【主信号: 20分钟动量】\n"
-        "- 动量 > +0.3%: 做多(long), size_pct=20, confidence=0.65\n"
-        "- 动量 < -0.3%: 做空(short), size_pct=20, confidence=0.65\n"
-        "- 动量 > +0.6% 且趋势偏多: size_pct=30, confidence=0.75\n"
-        "- 动量 < -0.6% 且趋势偏空: size_pct=30, confidence=0.75\n\n"
-        "【辅助信号: MA20偏离】\n"
-        "- 价格高于MA20超0.5%: 倾向 long\n"
-        "- 价格低于MA20超0.5%: 倾向 short\n\n"
-        "【hold条件】仅当动量在±0.1%以内 且 MA20偏离<±0.3% 时才允许hold\n\n"
+        "你是燃油期货短线交易决策引擎，采用「动量+均值回归」双策略。\n\n"
+        "【策略A: 均值回归（优先）】\n"
+        "MA20偏离 > +0.4%: 价格超买，等待回落，做空(short), size_pct=20, confidence=0.65\n"
+        "MA20偏离 < -0.4%: 价格超卖，等待反弹，做多(long), size_pct=20, confidence=0.65\n\n"
+        "【策略B: 趋势初期（动量刚起步时入场）】\n"
+        "动量在 +0.1%~+0.3% 且趋势=多头趋势/短期偏多: long, size_pct=15, confidence=0.55\n"
+        "动量在 -0.1%~-0.3% 且趋势=空头趋势/短期偏空: short, size_pct=15, confidence=0.55\n\n"
+        "【禁止操作】\n"
+        "- 动量 > +0.5%: 涨幅过大，禁止追多，观望或做空\n"
+        "- 动量 < -0.5%: 跌幅过大，禁止追空，观望或做多\n\n"
+        "【hold条件】动量在±0.1%以内 且 MA20偏离<±0.3%\n\n"
         "只输出JSON，不要任何解释或markdown:\n"
         '{"action":"long|short|hold","size_pct":0-100,'
         '"confidence":0-1,"reason":"简短中文依据"}'
@@ -614,7 +615,7 @@ if __name__ == "__main__":
             TqSim(init_balance=200000),
             # 1 个交易日: 给 DeepSeek 足够时间回应每个决策 (回测会快进, LLM 调用是真实网络)
             # 拉宽到一周，确保覆盖有趋势的交易日
-            backtest=TqBacktest(start_dt=date(2026, 1, 5), end_dt=date(2026, 1, 9)),
+            backtest=TqBacktest(start_dt=date(2026, 4, 7), end_dt=date(2026, 4, 11)),
             auth=TqAuth(TQ_USER, TQ_PASS),
         )
         print("[启动] 连接成功，开始加载 K 线数据...")
