@@ -604,13 +604,15 @@ if __name__ == "__main__":
         api = TqApi(
             TqSim(init_balance=200000),
             # 1 个交易日: 给 DeepSeek 足够时间回应每个决策 (回测会快进, LLM 调用是真实网络)
-            backtest=TqBacktest(start_dt=date(2026, 4, 7), end_dt=date(2026, 4, 8)),
+            # 拉宽到一周，确保覆盖有趋势的交易日
+            backtest=TqBacktest(start_dt=date(2026, 3, 16), end_dt=date(2026, 3, 21)),
             auth=TqAuth(TQ_USER, TQ_PASS),
         )
         print("[启动] 连接成功，开始加载 K 线数据...")
         brain = DecisionBrain(DEEPSEEK_KEY)
         # sample_interval=30: 每 30 根 1 分钟 K 线决策一次, 1 个交易日约 15 次决策
-        bt = ReasoningBacktester(api, SYMBOL, brain, sample_interval=30)
+        # 一周数据，每 60 根 K 线决策一次，约 20 次决策，5-10 分钟跑完
+        bt = ReasoningBacktester(api, SYMBOL, brain, sample_interval=60)
         print("[启动] 开始同步回测，每 30 根 K 线调用一次 DeepSeek...")
         try:
             bt.run_sync()   # 同步主循环，阻塞等待每次 DeepSeek 响应
