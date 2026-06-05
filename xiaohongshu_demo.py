@@ -1,5 +1,6 @@
 import asyncio
 import os
+import glob
 from dotenv import load_dotenv
 from browser_use import Agent
 from browser_use.llm.deepseek.chat import ChatDeepSeek
@@ -8,12 +9,20 @@ from browser_use.browser.session import BrowserSession
 
 load_dotenv()
 
+# 自动找到 Windows 上 playwright 安装的 Chromium
+chromium_candidates = glob.glob(
+    os.path.expanduser(r"~\AppData\Local\ms-playwright\chromium-*\chrome-win\chrome.exe")
+)
+chromium_path = chromium_candidates[0] if chromium_candidates else None
+print(f"使用 Chromium: {chromium_path}")
+
 llm = ChatDeepSeek(
     model="deepseek-chat",
     api_key=os.getenv("DEEPSEEK_API_KEY"),
 )
 
 browser_profile = BrowserProfile(
+    executable_path=chromium_path,
     headless=False,
 )
 
