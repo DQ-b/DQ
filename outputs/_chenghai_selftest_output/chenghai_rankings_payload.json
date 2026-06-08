@@ -1,0 +1,300 @@
+{
+  "columns": [
+    "platform",
+    "title",
+    "shop_name",
+    "sales_display",
+    "sales_num",
+    "price",
+    "location",
+    "product_url",
+    "is_chenghai",
+    "data_note"
+  ],
+  "all_rows": [
+    {
+      "platform": "1688",
+      "title": "澄海批发积木",
+      "shop_name": "工厂店",
+      "sales_display": "2.5万+",
+      "sales_num": 25000,
+      "price": "3.2",
+      "location": "广东省汕头市澄海区",
+      "product_url": "https://example.com/a1",
+      "is_chenghai": "是",
+      "data_note": "销量为平台展示值,非真实成交"
+    },
+    {
+      "platform": "抖音",
+      "title": "澄海变形玩具",
+      "shop_name": "抖店",
+      "sales_display": "1-2万",
+      "sales_num": 10000,
+      "price": "$39.0",
+      "location": "广东汕头",
+      "product_url": "https://example.com/d1",
+      "is_chenghai": "是",
+      "data_note": "销量为平台展示值,非真实成交"
+    },
+    {
+      "platform": "拼多多",
+      "title": "汕头泡泡枪",
+      "shop_name": "拼店",
+      "sales_display": "8万+",
+      "sales_num": 80000,
+      "price": "$15.5",
+      "location": "汕头市澄海区",
+      "product_url": "https://example.com/p1",
+      "is_chenghai": "是",
+      "data_note": "销量为平台展示值,非真实成交"
+    },
+    {
+      "platform": "淘宝",
+      "title": "澄海遥控车",
+      "shop_name": "玩具一店",
+      "sales_display": "10万+",
+      "sales_num": 100000,
+      "price": "$19.9",
+      "location": "广东汕头澄海",
+      "product_url": "https://example.com/t1",
+      "is_chenghai": "是",
+      "data_note": "销量为平台展示值,非真实成交"
+    },
+    {
+      "platform": "淘宝",
+      "title": "深圳积木",
+      "shop_name": "深圳店",
+      "sales_display": "5000+",
+      "sales_num": 5000,
+      "price": "$9.9",
+      "location": "广东深圳",
+      "product_url": "https://example.com/t2",
+      "is_chenghai": "否",
+      "data_note": "销量为平台展示值,非真实成交"
+    }
+  ],
+  "chenghai_rows": [
+    {
+      "platform": "淘宝",
+      "title": "澄海遥控车",
+      "shop_name": "玩具一店",
+      "sales_display": "10万+",
+      "sales_num": 100000,
+      "price": "$19.9",
+      "location": "广东汕头澄海",
+      "product_url": "https://example.com/t1",
+      "is_chenghai": "是",
+      "data_note": "销量为平台展示值,非真实成交"
+    },
+    {
+      "platform": "拼多多",
+      "title": "汕头泡泡枪",
+      "shop_name": "拼店",
+      "sales_display": "8万+",
+      "sales_num": 80000,
+      "price": "$15.5",
+      "location": "汕头市澄海区",
+      "product_url": "https://example.com/p1",
+      "is_chenghai": "是",
+      "data_note": "销量为平台展示值,非真实成交"
+    },
+    {
+      "platform": "1688",
+      "title": "澄海批发积木",
+      "shop_name": "工厂店",
+      "sales_display": "2.5万+",
+      "sales_num": 25000,
+      "price": "3.2",
+      "location": "广东省汕头市澄海区",
+      "product_url": "https://example.com/a1",
+      "is_chenghai": "是",
+      "data_note": "销量为平台展示值,非真实成交"
+    },
+    {
+      "platform": "抖音",
+      "title": "澄海变形玩具",
+      "shop_name": "抖店",
+      "sales_display": "1-2万",
+      "sales_num": 10000,
+      "price": "$39.0",
+      "location": "广东汕头",
+      "product_url": "https://example.com/d1",
+      "is_chenghai": "是",
+      "data_note": "销量为平台展示值,非真实成交"
+    }
+  ],
+  "platform_top": {
+    "1688": [
+      {
+        "platform": "1688",
+        "title": "澄海批发积木",
+        "shop_name": "工厂店",
+        "sales_display": "2.5万+",
+        "sales_num": 25000,
+        "price": "3.2",
+        "location": "广东省汕头市澄海区",
+        "product_url": "https://example.com/a1",
+        "is_chenghai": "是",
+        "data_note": "销量为平台展示值,非真实成交"
+      }
+    ],
+    "抖音": [
+      {
+        "platform": "抖音",
+        "title": "澄海变形玩具",
+        "shop_name": "抖店",
+        "sales_display": "1-2万",
+        "sales_num": 10000,
+        "price": "$39.0",
+        "location": "广东汕头",
+        "product_url": "https://example.com/d1",
+        "is_chenghai": "是",
+        "data_note": "销量为平台展示值,非真实成交"
+      }
+    ],
+    "拼多多": [
+      {
+        "platform": "拼多多",
+        "title": "汕头泡泡枪",
+        "shop_name": "拼店",
+        "sales_display": "8万+",
+        "sales_num": 80000,
+        "price": "$15.5",
+        "location": "汕头市澄海区",
+        "product_url": "https://example.com/p1",
+        "is_chenghai": "是",
+        "data_note": "销量为平台展示值,非真实成交"
+      }
+    ],
+    "淘宝": [
+      {
+        "platform": "淘宝",
+        "title": "澄海遥控车",
+        "shop_name": "玩具一店",
+        "sales_display": "10万+",
+        "sales_num": 100000,
+        "price": "$19.9",
+        "location": "广东汕头澄海",
+        "product_url": "https://example.com/t1",
+        "is_chenghai": "是",
+        "data_note": "销量为平台展示值,非真实成交"
+      }
+    ]
+  },
+  "overall_top20": [
+    {
+      "platform": "淘宝",
+      "title": "澄海遥控车",
+      "shop_name": "玩具一店",
+      "sales_display": "10万+",
+      "sales_num": 100000,
+      "price": "$19.9",
+      "location": "广东汕头澄海",
+      "product_url": "https://example.com/t1",
+      "is_chenghai": "是",
+      "data_note": "销量为平台展示值,非真实成交"
+    },
+    {
+      "platform": "拼多多",
+      "title": "汕头泡泡枪",
+      "shop_name": "拼店",
+      "sales_display": "8万+",
+      "sales_num": 80000,
+      "price": "$15.5",
+      "location": "汕头市澄海区",
+      "product_url": "https://example.com/p1",
+      "is_chenghai": "是",
+      "data_note": "销量为平台展示值,非真实成交"
+    },
+    {
+      "platform": "1688",
+      "title": "澄海批发积木",
+      "shop_name": "工厂店",
+      "sales_display": "2.5万+",
+      "sales_num": 25000,
+      "price": "3.2",
+      "location": "广东省汕头市澄海区",
+      "product_url": "https://example.com/a1",
+      "is_chenghai": "是",
+      "data_note": "销量为平台展示值,非真实成交"
+    },
+    {
+      "platform": "抖音",
+      "title": "澄海变形玩具",
+      "shop_name": "抖店",
+      "sales_display": "1-2万",
+      "sales_num": 10000,
+      "price": "$39.0",
+      "location": "广东汕头",
+      "product_url": "https://example.com/d1",
+      "is_chenghai": "是",
+      "data_note": "销量为平台展示值,非真实成交"
+    }
+  ],
+  "sources": [
+    {
+      "file": "taobao.csv",
+      "platform_key": "taobao",
+      "encoding": "utf-8-sig",
+      "rows": 2,
+      "mapped_fields": {
+        "title": "商品标题",
+        "shop_name": "店铺名",
+        "sales_display": "销量",
+        "price": "价格",
+        "location": "发货地",
+        "product_url": "商品链接",
+        "platform": "平台名"
+      }
+    },
+    {
+      "file": "pdd.csv",
+      "platform_key": "pdd",
+      "encoding": "utf-8-sig",
+      "rows": 1,
+      "mapped_fields": {
+        "title": "标题",
+        "shop_name": "店铺名称",
+        "sales_display": "销量区间",
+        "price": "售价",
+        "location": "商家地址",
+        "product_url": "链接",
+        "platform": "平台"
+      }
+    },
+    {
+      "file": "douyin.csv",
+      "platform_key": "douyin",
+      "encoding": "utf-8-sig",
+      "rows": 1,
+      "mapped_fields": {
+        "title": "商品名称",
+        "shop_name": "商家名",
+        "sales_display": "已售",
+        "price": "价格",
+        "location": "发货地",
+        "product_url": "商品链接",
+        "platform": "平台名"
+      }
+    },
+    {
+      "file": "1688.csv",
+      "platform_key": "1688",
+      "encoding": "utf-8-sig",
+      "rows": 1,
+      "mapped_fields": {
+        "title": "产品标题",
+        "shop_name": "供应商",
+        "sales_display": "成交量",
+        "price": "单价",
+        "location": "所在地",
+        "product_url": "商品网址",
+        "platform": "平台"
+      }
+    }
+  ],
+  "outputs": {
+    "top_by_platform": "D:\\Users\\HI\\Documents\\New project\\outputs\\_chenghai_selftest_output\\chenghai_top_by_platform.xlsx",
+    "overall_top20": "D:\\Users\\HI\\Documents\\New project\\outputs\\_chenghai_selftest_output\\chenghai_overall_top20.xlsx"
+  }
+}

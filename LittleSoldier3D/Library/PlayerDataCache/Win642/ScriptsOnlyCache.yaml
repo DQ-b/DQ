@@ -1,0 +1,206 @@
+ScriptsOnlyBuild:
+  usedScripts:
+    Assembly-CSharp.dll:
+    - GameManager
+    - HUDManager
+    - MouseLook
+    - PlayerHealth
+    - PlayerMovement
+    - SimpleCrosshair
+    - Target
+    - TrainingPickup
+    - ViewSwitcher
+    - WaveHUD
+    - WaveManager
+    - WeaponController
+    - WeaponView
+  serializedClasses:
+    Assembly-CSharp:
+    - .Wave
+    - .Weapon
+  methodsToPreserve: []
+  sceneClasses:
+    Assets/TrainingBase.unity:
+    - Class: 1
+      Script: {instanceID: 0}
+    - Class: 4
+      Script: {instanceID: 0}
+    - Class: 20
+      Script: {instanceID: 0}
+    - Class: 21
+      Script: {instanceID: 0}
+    - Class: 23
+      Script: {instanceID: 0}
+    - Class: 28
+      Script: {instanceID: 0}
+    - Class: 33
+      Script: {instanceID: 0}
+    - Class: 43
+      Script: {instanceID: 0}
+    - Class: 48
+      Script: {instanceID: 0}
+    - Class: 64
+      Script: {instanceID: 0}
+    - Class: 65
+      Script: {instanceID: 0}
+    - Class: 81
+      Script: {instanceID: 0}
+    - Class: 82
+      Script: {instanceID: 0}
+    - Class: 89
+      Script: {instanceID: 0}
+    - Class: 104
+      Script: {instanceID: 0}
+    - Class: 108
+      Script: {instanceID: 0}
+    - Class: 114
+      Script: {instanceID: 17576}
+    - Class: 114
+      Script: {instanceID: 17578}
+    - Class: 114
+      Script: {instanceID: 17580}
+    - Class: 114
+      Script: {instanceID: 17590}
+    - Class: 114
+      Script: {instanceID: 17594}
+    - Class: 114
+      Script: {instanceID: 17600}
+    - Class: 114
+      Script: {instanceID: 17604}
+    - Class: 114
+      Script: {instanceID: 17608}
+    - Class: 114
+      Script: {instanceID: 17610}
+    - Class: 114
+      Script: {instanceID: 17612}
+    - Class: 114
+      Script: {instanceID: 17618}
+    - Class: 114
+      Script: {instanceID: 17622}
+    - Class: 114
+      Script: {instanceID: 17624}
+    - Class: 115
+      Script: {instanceID: 0}
+    - Class: 135
+      Script: {instanceID: 0}
+    - Class: 143
+      Script: {instanceID: 0}
+    - Class: 157
+      Script: {instanceID: 0}
+    - Class: 196
+      Script: {instanceID: 0}
+    - Class: 238
+      Script: {instanceID: 0}
+  scriptHashData:
+  - hash:
+      serializedVersion: 2
+      Hash: f32f5785484544f2f6e4e83100e296fb
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: GameManager
+  - hash:
+      serializedVersion: 2
+      Hash: 92c063059ce8d981d75031b2a5d431aa
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: TrainingPickup
+  - hash:
+      serializedVersion: 2
+      Hash: 3699984a8548ad51c0f89c1e60039f3c
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: WaveHUD
+  - hash:
+      serializedVersion: 2
+      Hash: 7abf97b96b04ca9c25a6a2b50b3d685b
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: Grenade
+  - hash:
+      serializedVersion: 2
+      Hash: 4276d0d30121e48417e617c7e97ad402
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: EnemyHealth
+  - hash:
+      serializedVersion: 2
+      Hash: 738470ff1b79c3fcba8bbbde1edcff73
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: WaveManager
+  - hash:
+      serializedVersion: 2
+      Hash: a7bae6265bb5208bfc1ca45bf7df3df3
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: MouseLook
+  - hash:
+      serializedVersion: 2
+      Hash: 5e2b42fc218426f87090749020739671
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: WeaponView
+  - hash:
+      serializedVersion: 2
+      Hash: c52a75b50c5a47fb3676ac27e21abf8b
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: GunRaycast
+  - hash:
+      serializedVersion: 2
+      Hash: bb5b267abca850ab4e94827d241a0beb
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: HUDManager
+  - hash:
+      serializedVersion: 2
+      Hash: 8c6c857582c2a1a925bac329b1e52a7d
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: ViewSwitcher
+  - hash:
+      serializedVersion: 2
+      Hash: 6ef497e4862662a93508b2ca38a5423b
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: SimpleCrosshair
+  - hash:
+      serializedVersion: 2
+      Hash: d3de404a4e7f26a8ca717ccb876da0ce
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: PlayerHealth
+  - hash:
+      serializedVersion: 2
+      Hash: b74bd81f826c001428dbecd62f6cb23f
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: EnemyAI
+  - hash:
+      serializedVersion: 2
+      Hash: 7e3c5aa749dd2c225090e7265a635c71
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: WeaponController
+  - hash:
+      serializedVersion: 2
+      Hash: ef1ad35eaa5ef91a844debb681b2a877
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: ExplosionFx
+  - hash:
+      serializedVersion: 2
+      Hash: a3192a8391ae35bff3cb19c3cb4f2f68
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: PlayerMovement
+  - hash:
+      serializedVersion: 2
+      Hash: 971080e00b09ca0675f0381e18d1f581
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: Target
+  platform: 19
+  scenePathNames:
+  - Assets/TrainingBase.unity
+  playerPath: D:/Users/HI/Documents/New project/LittleSoldier3D/Builds/Preview/LittleSoldier3D.exe

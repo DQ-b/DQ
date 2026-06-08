@@ -1,0 +1,6 @@
+﻿platform,title,shop_name,sales_display,sales_num,price,location,product_url,is_chenghai,data_note
+1688,澄海批发积木,工厂店,2.5万+,25000,3.2,广东省汕头市澄海区,https://example.com/a1,是,"销量为平台展示值,非真实成交"
+抖音,澄海变形玩具,抖店,1-2万,10000,$39.0,广东汕头,https://example.com/d1,是,"销量为平台展示值,非真实成交"
+拼多多,汕头泡泡枪,拼店,8万+,80000,$15.5,汕头市澄海区,https://example.com/p1,是,"销量为平台展示值,非真实成交"
+淘宝,澄海遥控车,玩具一店,10万+,100000,$19.9,广东汕头澄海,https://example.com/t1,是,"销量为平台展示值,非真实成交"
+淘宝,深圳积木,深圳店,5000+,5000,$9.9,广东深圳,https://example.com/t2,否,"销量为平台展示值,非真实成交"

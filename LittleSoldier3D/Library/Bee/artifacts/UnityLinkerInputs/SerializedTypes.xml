@@ -1,0 +1,6 @@
+<linker>
+	<assembly fullname="Assembly-CSharp">
+		<type fullname=".Wave" preserve="nothing" serialized="true"/>
+		<type fullname=".Weapon" preserve="nothing" serialized="true"/>
+	</assembly>
+</linker>

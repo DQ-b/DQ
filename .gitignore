@@ -1,0 +1,7 @@
+tqsdk_auth.json
+feishu_webhook.txt
+feishu_sign_secret.txt
+*.out.log
+*.err.log
+__pycache__/
+*.pyc

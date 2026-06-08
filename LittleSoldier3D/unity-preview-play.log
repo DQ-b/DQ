@@ -1,0 +1,30 @@
+[Licensing::Module] Trying to connect to existing licensing client channel...
+[Licensing::IpcConnector] Successfully connected to the License Client on channel: "LicenseClient-HI" at "2026-06-05T08:20:43.644883Z"
+[Licensing::Client] Error: Code 10 while verifying Licensing Client signature (process Id: 38332, path: "C:/Program Files/Unity Hub/UnityLicensingClient_V1/Unity.Licensing.Client.exe")
+[Licensing::Module] Error: LicensingClient has failed validation; ignoring
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.17.4+4293ba1
+  Session Id:              8b6f3f4f5b654fd3959097a4b5265e43
+  Correlation Id:          7e697efd0a74d435ab15d7496400bbb6
+  External correlation Id: 4066801569910927359
+  Machine Id:              zJkxCFgOG1fAr50eMiEfMwJViiA=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-HI" (connect: 0.00s, validation: 0.01s, handshake: 0.02s)
+[Licensing::IpcConnector] Successfully connected to the License Notification on channel: "LicenseClient-HI-notifications" at "2026-06-05T08:20:43.6788822Z"
+[Licensing::Module] Error: Access token is unavailable; failed to update
+[Licensing::Client] Successfully updated license
+Built from '6000.0/release' branch; Version is '6000.0.0f1 (4ff56b3ea44c) revision 5240171'; Using compiler version '193933522'; Build Type 'Release'
+OS: 'Windows 11  (10.0.26100) 64bit Professional' Language: 'zh' Physical Memory: 32603 MB
+[Licensing::Client] Successfully resolved entitlements
+[Licensing::Module] Serial number assigned to: "15669714620836-UnityPersXXXX"
+BatchMode: 0, IsHumanControllingUs: 1, StartBugReporterOnCrash: 1, Is64bit: 1, IsPro: 0
+
+COMMAND LINE ARGUMENTS:
+D:\UnityEditors\6000.0.0f1\Editor\Unity.exe
+-projectPath
+D:\Users\HI\Documents\New project\LittleSoldier3D
+-executeMethod
+RunPreviewInPlay.Start
+-logFile
+D:\Users\HI\Documents\New project\LittleSoldier3D\unity-preview-play.log
+Successfully changed project path to: D:\Users\HI\Documents\New project\LittleSoldier3D
+Exiting without the bug reporter. Application will terminate with return code 0
