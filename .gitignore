@@ -5,3 +5,8 @@ feishu_sign_secret.txt
 *.err.log
 __pycache__/
 *.pyc
+*.exe
+*.dll
+node_modules/
+LittleSoldier3D/Builds/
+AI¹¤×÷Ì¨/
