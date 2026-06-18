@@ -83,43 +83,50 @@ def make_client(args) -> HttpClient:
 # fuzz
 # --------------------------------------------------------------------------- #
 def cmd_fuzz(args) -> int:
-    from .fuzzer import HttpFuzzer, Mutator, payloads as pl
+    from .fuzzer import HttpFuzzer, payloads as pl
 
     # 本地字节变异模式：不发网络流量，无需授权范围
     if args.mutate_seed is not None:
         return _run_mutate(args)
 
     scope = build_scope(args)
+    client = make_client(args)
+    fuzzer = HttpFuzzer(scope, client=client, threads=args.threads, delay=args.delay)
+    payload_list = pl.load_wordlist(args.wordlist) if args.wordlist else pl.get_category(args.category)
+
     try:
-        scope.check(args.url)
+        if args.request:
+            # 原始请求模式：URL 由请求文件推导，scope 校验在 fuzz_request 内部完成
+            with open(args.request, "r", encoding="utf-8") as fh:
+                raw = fh.read()
+            if "FUZZ" not in raw:
+                eprint("[!] 原始请求文件中未发现 FUZZ 标记，请在注入点放置 FUZZ。")
+                return 2
+            report = Report(title="Fuzz 报告（原始请求）", target_summary=args.request)
+            report.meta["http_backend"] = backend_name()
+            results = fuzzer.fuzz_request(raw, payload_list, scheme=args.scheme)
+        else:
+            if not args.url:
+                eprint("[!] 请提供目标 URL，或用 --request 指定原始请求文件，"
+                       "或 --mutate-seed 做本地变异。")
+                return 2
+            scope.check(args.url)  # 提前校验，给出清晰拒绝信息
+            report = Report(title="Fuzz 报告", target_summary=args.url)
+            report.meta["http_backend"] = backend_name()
+            if args.dirbust:
+                words = pl.load_wordlist(args.wordlist) if args.wordlist else pl.COMMON_PATHS
+                results = fuzzer.dirbust(args.url, words, method=args.method)
+            elif args.param:
+                results = fuzzer.fuzz_param(args.url, args.param, payload_list, method=args.method)
+            else:
+                if "FUZZ" not in args.url and not (args.data and "FUZZ" in args.data):
+                    eprint("[!] 未发现 FUZZ 标记。请在 URL 或 --data 中放置 FUZZ，"
+                           "或改用 --param / --dirbust / --request。")
+                    return 2
+                results = fuzzer.fuzz(args.url, payload_list, method=args.method, data=args.data)
     except ScopeError as exc:
         print(f"[拒绝] {exc}", file=sys.stderr)
         return 2
-
-    client = make_client(args)
-    fuzzer = HttpFuzzer(scope, client=client, threads=args.threads, delay=args.delay)
-
-    if args.wordlist:
-        payload_list = pl.load_wordlist(args.wordlist)
-    else:
-        payload_list = pl.get_category(args.category)
-
-    report = Report(title="Fuzz 报告", target_summary=args.url)
-    report.meta["http_backend"] = backend_name()
-
-    if args.dirbust:
-        words = pl.load_wordlist(args.wordlist) if args.wordlist else pl.COMMON_PATHS
-        results = fuzzer.dirbust(args.url, words, method=args.method)
-    elif args.param:
-        results = fuzzer.fuzz_param(args.url, args.param, payload_list, method=args.method)
-    else:
-        if "FUZZ" not in args.url and not (args.data and "FUZZ" in args.data):
-            print("[!] 未发现 FUZZ 标记。请在 URL 或 --data 中放置 FUZZ，"
-                  "或改用 --param / --dirbust。", file=sys.stderr)
-            return 2
-        results = fuzzer.fuzz(
-            args.url, payload_list, method=args.method, data=args.data,
-        )
 
     report.extend(fuzzer.to_findings(results))
     interesting = [r for r in results if r.interesting]
@@ -152,31 +159,49 @@ def _run_mutate(args) -> int:
 # --------------------------------------------------------------------------- #
 # scan
 # --------------------------------------------------------------------------- #
+_TOOL_INSTALL_HINT = {
+    "nmap": "`apt install nmap` / `brew install nmap`",
+    "sqlmap": "`pip install sqlmap` 或发行版包",
+    "nuclei": "github.com/projectdiscovery/nuclei（或 `go install`/发行版包）",
+    "gobuster": "github.com/OJ/gobuster（或 `go install`/发行版包）",
+}
+
+
 def cmd_scan(args) -> int:
-    from .tools import NmapScanner, SqlmapScanner
+    from .tools import GobusterScanner, NmapScanner, NucleiScanner, SqlmapScanner
 
     scope = build_scope(args)
     report = Report(title=f"{args.tool} 扫描报告", target_summary=args.target)
 
+    scanners = {
+        "nmap": lambda: NmapScanner(scope),
+        "sqlmap": lambda: SqlmapScanner(scope),
+        "nuclei": lambda: NucleiScanner(scope),
+        "gobuster": lambda: GobusterScanner(scope),
+    }
+    scanner = scanners[args.tool]()
+    if not scanner.available():
+        print(f"[!] 未检测到 {args.tool}。安装：{_TOOL_INSTALL_HINT[args.tool]}。", file=sys.stderr)
+        return 3
+
     try:
         if args.tool == "nmap":
-            scanner = NmapScanner(scope)
-            if not scanner.available():
-                print("[!] 未检测到 nmap。请先安装：`apt install nmap` / `brew install nmap`。",
-                      file=sys.stderr)
-                return 3
             result, findings = scanner.scan(
                 args.target, ports=args.ports, service_detection=not args.no_sv,
                 scan_type=args.scan_type, timing=args.timing, scripts=args.scripts,
             )
-        else:  # sqlmap
-            scanner = SqlmapScanner(scope)
-            if not scanner.available():
-                print("[!] 未检测到 sqlmap。安装：`pip install sqlmap` 或发行版包。",
-                      file=sys.stderr)
-                return 3
+        elif args.tool == "sqlmap":
             result, findings = scanner.scan(
                 args.target, data=args.data, level=args.level, risk=args.risk,
+            )
+        elif args.tool == "nuclei":
+            result, findings = scanner.scan(
+                args.target, severity=args.severity, templates=args.templates,
+            )
+        else:  # gobuster
+            result, findings = scanner.scan(
+                args.target, wordlist=args.wordlist, threads=args.threads,
+                extensions=args.extensions,
             )
     except ScopeError as exc:
         print(f"[拒绝] {exc}", file=sys.stderr)
@@ -209,8 +234,10 @@ def cmd_pentest(args) -> int:
         do_dirbust=not args.no_dirbust,
         do_param_fuzz=not args.no_fuzz,
         do_sqlmap=not args.no_sqlmap,
+        do_nuclei=not args.no_nuclei,
         ports=args.ports,
         fuzz_params=[p for p in (args.param or [])],
+        nuclei_severity=args.nuclei_severity,
         threads=args.threads,
         delay=args.delay,
     )
@@ -264,6 +291,9 @@ def build_parser() -> argparse.ArgumentParser:
     pf.add_argument("-d", "--data", help="请求体（可含 FUZZ 标记）")
     pf.add_argument("--param", help="对指定查询参数注入载荷")
     pf.add_argument("--dirbust", action="store_true", help="目录/路径探测模式")
+    pf.add_argument("--request", help="从原始 HTTP 请求文件读取请求（FUZZ 标记可在任意位置）")
+    pf.add_argument("--scheme", default="http", choices=["http", "https"],
+                    help="[--request] 推导 URL 用的协议（默认 http）")
     pf.add_argument("-c", "--category",
                     default="all",
                     help="载荷类别: sqli/xss/traversal/cmdi/ssti/lfi/generic/all")
@@ -282,8 +312,8 @@ def build_parser() -> argparse.ArgumentParser:
     pf.set_defaults(func=cmd_fuzz)
 
     # ---- scan ---- #
-    ps = sub.add_parser("scan", help="调用 nmap / sqlmap 扫描")
-    ps.add_argument("tool", choices=["nmap", "sqlmap"], help="要调用的工具")
+    ps = sub.add_parser("scan", help="调用 nmap / sqlmap / nuclei / gobuster 扫描")
+    ps.add_argument("tool", choices=["nmap", "sqlmap", "nuclei", "gobuster"], help="要调用的工具")
     ps.add_argument("target", help="目标 host / IP / URL")
     ps.add_argument("--ports", help="[nmap] 端口范围，如 1-1000 或 22,80,443")
     ps.add_argument("--scan-type", choices=["connect", "syn"], default="connect",
@@ -294,6 +324,11 @@ def build_parser() -> argparse.ArgumentParser:
     ps.add_argument("--data", help="[sqlmap] POST 数据")
     ps.add_argument("--level", type=int, default=1, help="[sqlmap] 检测等级 1-5")
     ps.add_argument("--risk", type=int, default=1, help="[sqlmap] 风险等级 1-3")
+    ps.add_argument("--severity", help="[nuclei] 严重度过滤，如 medium,high,critical")
+    ps.add_argument("--templates", "-T", help="[nuclei] 模板路径/标签（-t）")
+    ps.add_argument("--wordlist", "-w", help="[gobuster] 词表文件（缺省用内置小词表）")
+    ps.add_argument("--extensions", "-x", help="[gobuster] 扩展名，如 php,bak,txt")
+    ps.add_argument("--threads", "-t", type=int, default=10, help="[gobuster] 并发数")
     ps.add_argument("--show-raw", action="store_true", help="附带打印工具原始输出")
     add_scope_args(ps)
     add_output_args(ps)
@@ -306,10 +341,12 @@ def build_parser() -> argparse.ArgumentParser:
     pp.add_argument("--param", action="append", help="要 fuzz 的查询参数（可多次）")
     pp.add_argument("-t", "--threads", type=int, default=10, help="并发线程数")
     pp.add_argument("--delay", type=float, default=0.0, help="每请求后限速秒数")
+    pp.add_argument("--nuclei-severity", help="[nuclei] 严重度过滤，如 medium,high,critical")
     pp.add_argument("--no-portscan", action="store_true", help="跳过 nmap 端口扫描")
     pp.add_argument("--no-dirbust", action="store_true", help="跳过目录探测")
     pp.add_argument("--no-fuzz", action="store_true", help="跳过参数 fuzz")
     pp.add_argument("--no-sqlmap", action="store_true", help="跳过 sqlmap 验证")
+    pp.add_argument("--no-nuclei", action="store_true", help="跳过 nuclei 漏洞扫描")
     add_scope_args(pp)
     add_http_args(pp)
     add_output_args(pp)

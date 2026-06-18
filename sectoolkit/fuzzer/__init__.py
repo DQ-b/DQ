@@ -5,6 +5,9 @@ from __future__ import annotations
 
 from .engine import HttpFuzzer, FuzzResult
 from .mutator import Mutator
+from .request import RawRequest, parse_raw_request
 from . import payloads
 
-__all__ = ["HttpFuzzer", "FuzzResult", "Mutator", "payloads"]
+__all__ = [
+    "HttpFuzzer", "FuzzResult", "Mutator", "RawRequest", "parse_raw_request", "payloads",
+]

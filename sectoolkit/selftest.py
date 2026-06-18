@@ -16,10 +16,14 @@ import sys
 # 允许从仓库根目录或包内直接运行
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sectoolkit.fuzzer import Mutator, payloads as pl  # noqa: E402
+import json  # noqa: E402
+
+from sectoolkit.fuzzer import Mutator, parse_raw_request, payloads as pl  # noqa: E402
 from sectoolkit.reporting import Finding, Report, Severity  # noqa: E402
 from sectoolkit.scope import ScopeError, ScopeGuard  # noqa: E402
+from sectoolkit.tools.gobuster import GobusterScanner  # noqa: E402
 from sectoolkit.tools.nmap import NmapScanner  # noqa: E402
+from sectoolkit.tools.nuclei import NucleiScanner  # noqa: E402
 from sectoolkit.tools.sqlmap import SqlmapScanner  # noqa: E402
 
 _passed = 0
@@ -163,12 +167,68 @@ def test_sqlmap_parse() -> None:
     check("无注入 → INFO", len(f2) == 1 and f2[0].severity == Severity.INFO)
 
 
+def test_nuclei_parse() -> None:
+    print("[nuclei] JSONL 解析")
+    good = json.dumps({
+        "template-id": "exposed-panel",
+        "info": {"name": "Admin Panel", "severity": "high", "tags": ["panel"]},
+        "type": "http", "host": "http://t", "matched-at": "http://t/admin",
+    })
+    findings = NucleiScanner.parse_jsonl(good + "\nnot json line\n{broken")
+    check("仅解析有效行（忽略坏行）", len(findings) == 1)
+    check("severity 映射 high", findings[0].severity == Severity.HIGH)
+    check("标题含模板名", "Admin Panel" in findings[0].title)
+    check("matched-at 作为目标", findings[0].target == "http://t/admin")
+    check("提取 tags", "panel" in findings[0].tags)
+    check("空输入返回空", NucleiScanner.parse_jsonl("") == [])
+
+
+def test_gobuster_parse() -> None:
+    print("[gobuster] 输出解析")
+    out = ("/admin                (Status: 301) [Size: 312] [--> /admin/]\n"
+           "/login                (Status: 200) [Size: 1234]\n"
+           "garbage line without status\n")
+    findings = GobusterScanner.parse_output(out, "http://t")
+    check("解析 2 条命中", len(findings) == 2)
+    check("URL 拼接正确", any(f.target == "http://t/admin" for f in findings))
+    check("提取状态码/大小", any(
+        f.evidence.get("status") == 200 and f.evidence.get("size") == 1234 for f in findings))
+
+
+def test_raw_request() -> None:
+    print("[request] 原始请求解析")
+    raw = ("POST /login?x=1 HTTP/1.1\r\n"
+           "Host: app.example.com\r\n"
+           "Content-Type: application/x-www-form-urlencoded\r\n"
+           "Content-Length: 999\r\n"
+           "\r\n"
+           "user=admin&pass=FUZZ")
+    req = parse_raw_request(raw, scheme="https")
+    check("方法解析", req.method == "POST")
+    check("URL 由 Host+target 推导", req.url == "https://app.example.com/login?x=1")
+    lower_keys = {k.lower() for k in req.headers}
+    check("丢弃 Content-Length", "content-length" not in lower_keys)
+    check("保留 Content-Type", req.headers.get("Content-Type") == "application/x-www-form-urlencoded")
+    check("body 提取含 FUZZ", req.body == "user=admin&pass=FUZZ")
+
+    req2 = parse_raw_request("GET http://h/x HTTP/1.1\nHost: h\n\n")
+    check("绝对 URL target 直接采用", req2.url == "http://h/x")
+
+    raised = False
+    try:
+        parse_raw_request("GET /x HTTP/1.1\n\n")  # 相对路径且无 Host
+    except ValueError:
+        raised = True
+    check("缺 Host + 相对路径 → 报错", raised)
+
+
 def main() -> int:
     print("=" * 56)
     print("sectoolkit 离线自测")
     print("=" * 56)
     for fn in (test_scope, test_mutator, test_payloads, test_reporting,
-               test_nmap_parse, test_sqlmap_parse):
+               test_nmap_parse, test_sqlmap_parse, test_nuclei_parse,
+               test_gobuster_parse, test_raw_request):
         fn()
     print("-" * 56)
     print(f"通过 {_passed} / {_passed + _failed}")

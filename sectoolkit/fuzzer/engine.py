@@ -161,6 +161,32 @@ class HttpFuzzer:
         return self._run(one, payload_list)
 
     # ------------------------------------------------------------------ #
+    # 原始请求模糊测试（Burp 风格请求文件）
+    # ------------------------------------------------------------------ #
+    def fuzz_request(
+        self, raw_text: str, payload_list: list[str], *, scheme: str = "http"
+    ) -> list[FuzzResult]:
+        """对一份含 ``FUZZ`` 标记的原始 HTTP 请求做模糊测试。"""
+        from .request import parse_raw_request
+
+        base_req = parse_raw_request(raw_text.replace(FUZZ_MARKER, ""), scheme=scheme)
+        self.scope.check(base_req.url)
+        baseline = self._baseline(
+            base_req.method, base_req.url, headers=base_req.headers, data=base_req.body
+        )
+
+        def one(payload: str) -> FuzzResult:
+            req = parse_raw_request(raw_text.replace(FUZZ_MARKER, payload), scheme=scheme)
+            resp = self.client.request(req.method, req.url, headers=req.headers, data=req.body)
+            if self.delay:
+                time.sleep(self.delay)
+            return FuzzResult(
+                payload, req.url, "raw-request", resp, self._analyse(payload, resp, baseline)
+            )
+
+        return self._run(one, payload_list)
+
+    # ------------------------------------------------------------------ #
     # 目录/路径爆破
     # ------------------------------------------------------------------ #
     def dirbust(
