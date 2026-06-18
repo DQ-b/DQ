@@ -167,24 +167,6 @@ for f in fuzzer.to_findings(results):
 python sectoolkit/selftest.py     # 离线自测（不依赖外部工具/网络）
 ```
 
-## 本地练习靶场（安全演示）
-
-仓库自带一个**故意留洞、只监听 `127.0.0.1`** 的练习靶场，可在本机安全地体验
-全流程，不碰任何真实站点：
-
-```bash
-# 1) 启动靶场（另开一个终端）
-python sectoolkit/examples/vulnerable_app.py --port 8799
-
-# 2) 对它跑完整流水线并生成报告
-python -m sectoolkit pentest "http://127.0.0.1:8799/item?id=1" --param id \
-    --scope 127.0.0.1 --authorize -f html -o report.html
-```
-
-预期会看到：参数 fuzz 命中疑似 SQLi（`/item?id='` 触发 SQL 报错）与反射型 XSS、
-目录探测命中 `/.env` `/admin` `/config` 等路径；未安装的 nmap/nuclei/sqlmap 会被
-优雅跳过并记录在报告里。
-
 ## 目录结构
 
 ```
