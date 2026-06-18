@@ -1,0 +1,20 @@
+# sectoolkit 授权范围示例文件
+# 每行一个条目，# 起始为注释，空行忽略。
+# 用法：--scope-file scope.example.txt --authorize
+#
+# ⚠ 只列入你拥有或已获得书面测试授权的目标。
+
+# 精确 IP
+192.168.56.101
+
+# CIDR 网段
+10.10.10.0/24
+
+# 精确域名
+staging.example.com
+
+# 通配子域（匹配任意子域，但不含裸域 example.com 本身）
+*.lab.example.com
+
+# 本地靶场（如 DVWA / juice-shop 等，需显式列入才放行）
+127.0.0.1

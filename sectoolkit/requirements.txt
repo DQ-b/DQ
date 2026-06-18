@@ -1,0 +1,10 @@
+# sectoolkit 依赖
+# 核心功能仅依赖 Python 3.9+ 标准库；以下为可选增强项。
+
+# 可选：更稳健的 HTTP 客户端（连接复用 / 代理 / TLS 控制）。
+# 不安装时自动回退到标准库 urllib。
+requests>=2.25 ; python_version >= "3.7"
+
+# 外部扫描工具（nmap、sqlmap）不是 pip 依赖，需自行通过系统包管理器或官方渠道安装：
+#   nmap   :  apt install nmap   /  brew install nmap
+#   sqlmap :  pip install sqlmap /  发行版包  /  github.com/sqlmapproject/sqlmap
